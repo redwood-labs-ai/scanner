@@ -1,0 +1,56 @@
+{
+  "name": "@redwoodlabs/scanner",
+  "version": "0.1.0",
+  "description": "Security scanner for AI-native codebases",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "redwood": "./dist/cli.js",
+    "redwood-scan": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/cli.ts src/index.ts --format esm --clean",
+    "dev": "tsup src/cli.ts src/index.ts --format esm --watch",
+    "test": "node --test",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "security",
+    "scanner",
+    "sast",
+    "mcp",
+    "ai",
+    "agent",
+    "code-review",
+    "vulnerability"
+  ],
+  "author": "Redwood Labs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/redwoodlabs/scanner"
+  },
+  "bugs": {
+    "url": "https://github.com/redwoodlabs/scanner/issues"
+  },
+  "homepage": "https://redwoodlabs.ai",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "glob": "^10.3.10",
+    "simple-git": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  }
+}
