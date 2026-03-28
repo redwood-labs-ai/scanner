@@ -1,0 +1,8 @@
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# Test fixtures (if we add them)
+test/fixtures/

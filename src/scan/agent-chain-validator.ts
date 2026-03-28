@@ -84,7 +84,7 @@ function findAgentFiles(dir: string): string[] {
       const entries = readdirSync(searchPath);
       
       for (const entry of entries) {
-        if (entry === 'node_modules' || entry === '.git') continue;
+        if (['node_modules', '.git', 'dist', 'build', 'target', '__pycache__'].includes(entry)) continue;
         
         const fullPath = join(searchPath, entry);
         const stat = statSync(fullPath);
