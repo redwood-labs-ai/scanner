@@ -33,10 +33,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/redwood-labs/scanner"
+    "url": "https://github.com/redwood-labs-ai/scanner"
   },
   "bugs": {
-    "url": "https://github.com/redwood-labs/scanner/issues"
+    "url": "https://github.com/redwood-labs-ai/scanner/issues"
   },
   "homepage": "https://redwoodlabs.ai",
   "engines": {
