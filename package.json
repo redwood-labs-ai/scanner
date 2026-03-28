@@ -1,5 +1,5 @@
 {
-  "name": "@redwoodlabs/scanner",
+  "name": "@redwood-labs/scanner",
   "version": "0.1.0",
   "description": "Security scanner for AI-native codebases",
   "type": "module",
@@ -33,10 +33,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/redwoodlabs/scanner"
+    "url": "https://github.com/redwood-labs/scanner"
   },
   "bugs": {
-    "url": "https://github.com/redwoodlabs/scanner/issues"
+    "url": "https://github.com/redwood-labs/scanner/issues"
   },
   "homepage": "https://redwoodlabs.ai",
   "engines": {

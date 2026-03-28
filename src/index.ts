@@ -4,7 +4,7 @@
  * 
  * @example
  * ```typescript
- * import { scan, validateAgentChain } from '@redwoodlabs/scanner';
+ * import { scan, validateAgentChain } from '@redwood-labs/scanner';
  * 
  * // Full security scan
  * const issues = await scan('./my-repo');

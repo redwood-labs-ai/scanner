@@ -557,7 +557,7 @@ function validateToolChains(graph: { nodes: AgentNode[], edges: Edge[] }): Issue
       const destNode = graph.nodes.find(n => n.name === edge.to);
       
       // Check if destination can potentially access sensitive data
-      if (destNode && !isIsolatedAgent(destNode)) {
+      if (destNode && !isIsolatedAgent(destNode, graph.edges)) {
         issues.push({
           id: `chain-dataflow-${Date.now()}`,
           type: 'Sensitive Data Flow Risk',
@@ -573,13 +573,11 @@ function validateToolChains(graph: { nodes: AgentNode[], edges: Edge[] }): Issue
   return issues;
 }
 
-function isIsolatedAgent(node: AgentNode): boolean {
+function isIsolatedAgent(node: AgentNode, edges: Edge[]): boolean {
   // Agents with no outgoing calls are considered isolated (leaf nodes)
-  const hasOutgoing = graph.edges.some(e => e.from === node.name);
+  const hasOutgoing = edges.some(e => e.from === node.name);
   return !hasOutgoing;
 }
-
-const graphEdges = [] as Edge[];
 
 /**
  * Main entry point for agent chain validation
@@ -601,8 +599,6 @@ export async function validateAgentChain(repoPath: string): Promise<Issue[]> {
     edgeMap[edge.from].push(edge);
   });
   
-  globalThis['graphEdges'] = graph.edges;
-
   console.log('🔍 Analyzing handoff patterns...');
   const handoffIssues = analyzeHandoffs(graph);
   

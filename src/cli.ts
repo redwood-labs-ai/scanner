@@ -159,7 +159,7 @@ function toSarif(issues: Issue[], repoPath: string) {
         driver: {
           name: 'redwood-scanner',
           version: '0.1.0',
-          informationUri: 'https://github.com/redwoodlabs/scanner',
+          informationUri: 'https://github.com/redwood-labs/scanner',
         }
       },
       results: issues.map(issue => ({

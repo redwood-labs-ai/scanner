@@ -13,12 +13,12 @@ Security scanner for AI-native codebases. Catches vulnerabilities, dangerous pat
 ## Installation
 
 ```bash
-npm install -g @redwoodlabs/scanner
+npm install -g @redwood-labs/scanner
 ```
 
 Or use with npx:
 ```bash
-npx @redwoodlabs/scanner scan .
+npx @redwood-labs/scanner scan .
 ```
 
 ## CLI Usage
@@ -45,7 +45,7 @@ redwood scan ./my-repo --sarif > results.sarif
 ## Programmatic Usage
 
 ```typescript
-import { scan, validateAgentChain } from '@redwoodlabs/scanner';
+import { scan, validateAgentChain } from '@redwood-labs/scanner';
 
 // Full security scan
 const issues = await scan('./my-repo', { verbose: true });
@@ -63,7 +63,7 @@ const chainIssues = await validateAgentChain('./my-repo');
 ```yaml
 - name: Security Scan
   run: |
-    npx @redwoodlabs/scanner scan . --sarif > results.sarif
+    npx @redwood-labs/scanner scan . --sarif > results.sarif
     
 - name: Upload SARIF
   uses: github/codeql-action/upload-sarif@v2
@@ -75,7 +75,7 @@ const chainIssues = await validateAgentChain('./my-repo');
 ```yaml
 - name: Security Scan
   run: |
-    npm install -g @redwoodlabs/scanner
+    npm install -g @redwood-labs/scanner
     redwood scan .
 ```
 
