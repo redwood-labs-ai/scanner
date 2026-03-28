@@ -80,7 +80,8 @@ const DANGEROUS_PATTERNS: Pattern[] = [
   },
   {
     name: 'SQL concatenation',
-    regex: /["'`]\s*SELECT\s+.*\+\s*|["'`]\s*INSERT\s+.*\+\s*|["'`]\s*UPDATE\s+.*\+\s*|["'`]\s*DELETE\s+.*\+\s*/gi,
+    // Match SQL strings followed by + concatenation (not + inside SQL which is arithmetic)
+    regex: /["'`][\s\S]{0,50}(SELECT|INSERT|UPDATE|DELETE)[\s\S]{0,50}["'`]\s*\+|\+\s*["'`][\s\S]{0,50}(SELECT|INSERT|UPDATE|DELETE)/gi,
     severity: 'critical',
     message: 'SQL string concatenation is vulnerable to SQL injection',
     fix: 'Use parameterized queries or an ORM',
