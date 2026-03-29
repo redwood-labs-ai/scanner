@@ -99,6 +99,23 @@ test/fixtures/
 node_modules/
 ```
 
+## Inline Ignore Comments
+
+Suppress specific findings with inline comments:
+
+```javascript
+// redwood-ignore: intentional for testing
+eval(userInput);
+
+// redwood-ignore
+const token = "sk-test-123";
+```
+
+Supported comment styles:
+- `// redwood-ignore` for JS, TS, PHP, Go, Rust
+- `# redwood-ignore` for Python, Ruby, YAML, Shell
+- Add optional reason: `// redwood-ignore: reason here`
+
 ## What It Catches
 
 | Category | Examples |
