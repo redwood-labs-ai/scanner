@@ -1,6 +1,13 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import type { Issue } from './engine.js';
+import { 
+  DEFAULT_IGNORE_DIRS,
+  DEFAULT_IGNORE_EXTENSIONS,
+  loadRedwoodIgnore, 
+  isIgnored, 
+  shouldSkipDir 
+} from './ignore.js';
 
 const SECRET_PATTERNS = [
   {
@@ -63,40 +70,19 @@ const SECRET_PATTERNS = [
   },
   {
     name: 'Bearer Token',
-    regex: /bearer\s+[a-zA-Z0-9_\-.]{20,}/gi,
+    regex: /bearer\s+[a-zA-Z0-9_\-\.]{20,}/gi,
     severity: 'high' as const,
   },
 ];
 
-const IGNORE_DIRS = [
-  // JS/Node
-  'node_modules', 'dist', 'build', '.next', '.nuxt', 
-  // Rust
-  'target', 
-  // Python
-  '__pycache__', '.venv', 'venv', 'env',
-  // General
-  '.git', 'vendor', 'third_party', 'deps',
-  // Tests
-  'test', 'tests', '__tests__', 'spec', 'fixtures',
-];
-const IGNORE_EXTENSIONS = [
-  // Minified/generated
-  '.min.js', '.map', '.lock',
-  // Images
-  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp',
-  // Compiled/binary
-  '.dylib', '.so', '.dll', '.exe', '.o', '.a', '.rlib', '.rmeta',
-  '.wasm', '.pyc', '.pyo', '.class', '.jar',
-  // Archives
-  '.zip', '.tar', '.gz', '.tgz', '.rar', '.7z',
-  // Other
-  '.pdf', '.doc', '.docx', '.xls', '.xlsx',
-];
-
 export async function scanSecrets(repoPath: string): Promise<Issue[]> {
   const issues: Issue[] = [];
-  const files = getFiles(repoPath);
+  
+  // Load .redwoodignore patterns
+  const ignoreConfig = await loadRedwoodIgnore(repoPath);
+  const ignorePatterns = ignoreConfig?.patterns || [];
+  
+  const files = getFiles(repoPath, repoPath, ignorePatterns);
   
   for (const file of files) {
     const relPath = relative(repoPath, file);
@@ -143,7 +129,7 @@ export async function scanSecrets(repoPath: string): Promise<Issue[]> {
   return issues;
 }
 
-function getFiles(dir: string): string[] {
+function getFiles(dir: string, repoPath: string, ignorePatterns: string[]): string[] {
   const files: string[] = [];
   
   try {
@@ -152,13 +138,19 @@ function getFiles(dir: string): string[] {
     for (const entry of entries) {
       const fullPath = join(dir, entry);
       
-      if (IGNORE_DIRS.includes(entry)) continue;
-      if (IGNORE_EXTENSIONS.some(ext => entry.endsWith(ext))) continue;
+      // Skip directories based on centralized defaults
+      if (DEFAULT_IGNORE_DIRS.includes(entry)) continue;
+      
+      // Skip files with ignored extensions
+      if (DEFAULT_IGNORE_EXTENSIONS.some(ext => entry.endsWith(ext))) continue;
+      
+      // Check against .redwoodignore patterns
+      if (ignorePatterns.length > 0 && isIgnored(fullPath, repoPath, ignorePatterns)) continue;
       
       const stat = statSync(fullPath);
       
       if (stat.isDirectory()) {
-        files.push(...getFiles(fullPath));
+        files.push(...getFiles(fullPath, repoPath, ignorePatterns));
       } else if (stat.isFile()) {
         files.push(fullPath);
       }
