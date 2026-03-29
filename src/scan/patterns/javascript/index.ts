@@ -1,6 +1,7 @@
 import { definePatterns } from '../types.js';
 
 export default definePatterns([
+  // redwood-ignore: pattern definition
   {
     name: 'eval() usage',
     regex: /\beval\s*\(/g,

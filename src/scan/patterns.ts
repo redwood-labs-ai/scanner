@@ -26,9 +26,9 @@ import {
 
 /**
  * Inline ignore comment patterns for different languages
- * Supports: // redwood-ignore, # redwood-ignore, /* redwood-ignore */
+ * Supports: // redwood-ignore, # redwood-ignore
  */
-const INLINE_IGNORE_PATTERN = /\s*(\/\/|#|\/\*)\s*redwood-ignore(?:\s*:\s*([^\s\n]*))?/i;
+const INLINE_IGNORE_PATTERN = /\s*(\/\/|#)\s*redwood-ignore/i;
 
 /**
  * Extract inline ignore comments from a file and map them to line numbers
@@ -59,7 +59,7 @@ export async function scanPatterns(repoPath: string): Promise<Issue[]> {
   const ignoreConfig = await loadRedwoodIgnore(repoPath);
   const ignorePatterns = ignoreConfig?.patterns || [];
   
-  const files = getFiles(repoPath, ignorePatterns);
+  const files = getFiles(repoPath, repoPath, ignorePatterns);
   
   for (const file of files) {
     const relPath = relative(repoPath, file);
