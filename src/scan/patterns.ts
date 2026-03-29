@@ -24,6 +24,31 @@ import {
   shouldSkipDir 
 } from './ignore.js';
 
+/**
+ * Inline ignore comment patterns for different languages
+ * Supports: // redwood-ignore, # redwood-ignore, /* redwood-ignore */
+ */
+const INLINE_IGNORE_PATTERN = /\s*(\/\/|#|\/\*)\s*redwood-ignore(?:\s*:\s*([^\s\n]*))?/i;
+
+/**
+ * Extract inline ignore comments from a file and map them to line numbers
+ * Returns a Set of line numbers that have ignore comments
+ */
+function extractInlineIgnores(content: string): Set<number> {
+  const ignoredLines = new Set<number>();
+  const lines = content.split('\n');
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Check if line contains an inline ignore comment
+    if (INLINE_IGNORE_PATTERN.test(line)) {
+      ignoredLines.add(i + 1); // Convert to 1-indexed line number
+    }
+  }
+  
+  return ignoredLines;
+}
+
 // Re-export for backwards compatibility
 export { DANGEROUS_PATTERNS, patternStats };
 
@@ -43,6 +68,9 @@ export async function scanPatterns(repoPath: string): Promise<Issue[]> {
     try {
       const content = readFileSync(file, 'utf-8');
       
+      // Extract inline ignore comments for this file
+      const ignoredLines = extractInlineIgnores(content);
+      
       for (const pattern of DANGEROUS_PATTERNS) {
         // Skip if pattern is for specific file types and this isn't one
         if (pattern.fileTypes && !pattern.fileTypes.includes(ext)) {
@@ -55,6 +83,11 @@ export async function scanPatterns(repoPath: string): Promise<Issue[]> {
         while ((match = regex.exec(content)) !== null) {
           const beforeMatch = content.slice(0, match.index);
           const lineNumber = beforeMatch.split('\n').length;
+          
+          // Skip if this line has an inline ignore comment
+          if (ignoredLines.has(lineNumber)) {
+            continue;
+          }
           
           issues.push({
             id: `pattern-${issues.length + 1}`,
