@@ -1,6 +1,12 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import type { Issue } from './engine.js';
+import { 
+  DEFAULT_IGNORE_DIRS,
+  loadRedwoodIgnore, 
+  isIgnored, 
+  shouldSkipDir 
+} from './ignore.js';
 
 /**
  * MCP-specific security scanner
@@ -17,13 +23,22 @@ export async function scanMCP(repoPath: string): Promise<Issue[]> {
   const issues: Issue[] = [];
   
   // Look for MCP server indicators
-  const mcpFiles = findMCPFiles(repoPath);
+  const mcpFiles = await findMCPFiles(repoPath);
   
   if (mcpFiles.length === 0) {
     return issues; // Not an MCP project
   }
   
+  // Load .redwoodignore patterns
+  const ignoreConfig = await loadRedwoodIgnore(repoPath);
+  const ignorePatterns = ignoreConfig?.patterns || [];
+  
   for (const file of mcpFiles) {
+    // Skip if file matches .redwoodignore patterns
+    if (isIgnored(file, repoPath, ignorePatterns)) {
+      continue;
+    }
+    
     const relPath = relative(repoPath, file);
     const content = readFileSync(file, 'utf-8');
     
@@ -47,7 +62,7 @@ export async function scanMCP(repoPath: string): Promise<Issue[]> {
   return issues;
 }
 
-function findMCPFiles(dir: string): string[] {
+async function findMCPFiles(repoPath: string): Promise<string[]> {
   const files: string[] = [];
   const mcpIndicators = [
     '@modelcontextprotocol/sdk',
@@ -58,19 +73,31 @@ function findMCPFiles(dir: string): string[] {
     'ToolDefinition',
   ];
   
+  // Load .redwoodignore patterns
+  const ignoreConfig = await loadRedwoodIgnore(repoPath);
+  const ignorePatterns = ignoreConfig?.patterns || [];
+  
   function searchDir(searchPath: string) {
     try {
       const entries = readdirSync(searchPath);
       
       for (const entry of entries) {
-        if (['node_modules', '.git', 'dist', 'build', 'target', '__pycache__'].includes(entry)) continue;
+        // Skip directories based on centralized defaults
+        if (DEFAULT_IGNORE_DIRS.includes(entry)) continue;
         
         const fullPath = join(searchPath, entry);
+        
+        // Skip if directory matches .redwoodignore patterns
+        if (ignorePatterns.length > 0 && shouldSkipDir(entry, fullPath, repoPath, ignorePatterns)) continue;
+        
         const stat = statSync(fullPath);
         
         if (stat.isDirectory()) {
           searchDir(fullPath);
         } else if (stat.isFile() && /\.(js|ts|py)$/.test(entry)) {
+          // Skip if file matches .redwoodignore patterns
+          if (ignorePatterns.length > 0 && isIgnored(fullPath, repoPath, ignorePatterns)) continue;
+          
           try {
             const content = readFileSync(fullPath, 'utf-8');
             if (mcpIndicators.some(indicator => content.includes(indicator))) {
@@ -82,7 +109,7 @@ function findMCPFiles(dir: string): string[] {
     } catch {}
   }
   
-  searchDir(dir);
+  searchDir(repoPath);
   return files;
 }
 
@@ -194,7 +221,7 @@ function checkPromptInjection(content: string, file: string): Issue[] {
   
   // Check for user input being directly used in tool descriptions
   const injectionPatterns = [
-    /description\s*[:=]\s*[`"'].*\$\{/g,  // Template literal injection
+    /description\s*[:=]\s*[`'"].*\$\{/g,  // Template literal injection
     /description\s*[:=]\s*.*\+\s*user/gi,  // String concat with user input
     /description\s*[:=]\s*f['"].*\{.*input/gi,  // Python f-string with input
   ];

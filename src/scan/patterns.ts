@@ -16,26 +16,25 @@ import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative, extname } from 'path';
 import type { Issue } from './engine.js';
 import { DANGEROUS_PATTERNS, patternStats, type Pattern } from './patterns/index.js';
+import { 
+  DEFAULT_IGNORE_DIRS, 
+  DEFAULT_IGNORE_EXTENSIONS,
+  loadRedwoodIgnore, 
+  isIgnored, 
+  shouldSkipDir 
+} from './ignore.js';
 
 // Re-export for backwards compatibility
 export { DANGEROUS_PATTERNS, patternStats };
 
-const IGNORE_DIRS = [
-  // JS/Node
-  'node_modules', 'dist', 'build', '.next', '.nuxt', 
-  // Rust
-  'target', 
-  // Python
-  '__pycache__', '.venv', 'venv', 'env',
-  // General
-  '.git', 'vendor', 'third_party', 'deps',
-  // Tests (configurable later)
-  'test', 'tests', '__tests__', 'spec', 'fixtures',
-];
-
 export async function scanPatterns(repoPath: string): Promise<Issue[]> {
   const issues: Issue[] = [];
-  const files = getFiles(repoPath);
+  
+  // Load .redwoodignore patterns
+  const ignoreConfig = await loadRedwoodIgnore(repoPath);
+  const ignorePatterns = ignoreConfig?.patterns || [];
+  
+  const files = getFiles(repoPath, ignorePatterns);
   
   for (const file of files) {
     const relPath = relative(repoPath, file);
@@ -77,7 +76,7 @@ export async function scanPatterns(repoPath: string): Promise<Issue[]> {
   return issues;
 }
 
-function getFiles(dir: string): string[] {
+function getFiles(dir: string, repoPath: string, ignorePatterns: string[]): string[] {
   const files: string[] = [];
   
   try {
@@ -85,8 +84,12 @@ function getFiles(dir: string): string[] {
     
     for (const entry of entries) {
       const fullPath = join(dir, entry);
+      const relPath = relative(repoPath, fullPath);
       
-      if (IGNORE_DIRS.includes(entry)) continue;
+      // Skip directories based on centralized defaults + .redwoodignore patterns
+      if (DEFAULT_IGNORE_DIRS.includes(entry)) continue;
+      if (ignorePatterns.length > 0 && shouldSkipDir(entry, fullPath, repoPath, ignorePatterns)) continue;
+      
       // Allow important dotfiles for config scanning
       const allowedDotfiles = ['.env', '.env.local', '.env.example', '.env.production', '.env.development'];
       if (entry.startsWith('.') && !allowedDotfiles.includes(entry.toLowerCase())) continue;
@@ -94,8 +97,13 @@ function getFiles(dir: string): string[] {
       const stat = statSync(fullPath);
       
       if (stat.isDirectory()) {
-        files.push(...getFiles(fullPath));
+        files.push(...getFiles(fullPath, repoPath, ignorePatterns));
       } else if (stat.isFile()) {
+        // Skip if file matches ignore patterns
+        if (ignorePatterns.length > 0 && isIgnored(fullPath, repoPath, ignorePatterns)) {
+          continue;
+        }
+        
         const ext = extname(entry);
         const name = entry.toLowerCase();
         // Scan code files

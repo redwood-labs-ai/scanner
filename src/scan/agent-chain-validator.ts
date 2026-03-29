@@ -9,6 +9,11 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import type { Issue } from './engine.js';
+import { 
+  DEFAULT_IGNORE_DIRS, 
+  loadRedwoodIgnore, 
+  shouldSkipDir 
+} from './ignore.js';
 
 export interface AgentNode {
   name: string;
@@ -33,20 +38,10 @@ export interface ValidationResult {
   fix?: string;
 }
 
-interface Issue {
-  id: string;
-  type: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  file: string;
-  message: string;
-  match?: string;
-  fix?: string;
-}
-
 /**
  * Build an orchestration graph from code analysis
  */
-function buildOrchestrationGraph(repoPath: string): { nodes: AgentNode[], edges: Edge[] } {
+function buildOrchestrationGraph(repoPath: string) {
   const nodes: AgentNode[] = [];
   const edges: Edge[] = [];
   
@@ -71,7 +66,7 @@ function buildOrchestrationGraph(repoPath: string): { nodes: AgentNode[], edges:
 /**
  * Find files that appear to be agent/orchestrator implementations
  */
-function findAgentFiles(dir: string): string[] {
+async function findAgentFiles(repoPath: string): Promise<string[]> {
   const files: string[] = [];
   const agentIndicators = [
     '@langchain', 'agent', 'orchestration', 'workflow',
@@ -79,14 +74,23 @@ function findAgentFiles(dir: string): string[] {
     'mcp-server', 'createReactHooksAgent', 'AgentType'
   ];
   
+  // Load .redwoodignore patterns
+  const ignoreConfig = await loadRedwoodIgnore(repoPath);
+  const ignorePatterns = ignoreConfig?.patterns || [];
+  
   function searchDir(searchPath: string): void {
     try {
       const entries = readdirSync(searchPath);
       
       for (const entry of entries) {
-        if (['node_modules', '.git', 'dist', 'build', 'target', '__pycache__'].includes(entry)) continue;
+        // Skip directories based on centralized defaults
+        if (DEFAULT_IGNORE_DIRS.includes(entry)) continue;
         
         const fullPath = join(searchPath, entry);
+        
+        // Skip if directory matches .redwoodignore patterns
+        if (ignorePatterns.length > 0 && shouldSkipDir(entry, fullPath, repoPath, ignorePatterns)) continue;
+        
         const stat = statSync(fullPath);
         
         if (stat.isDirectory()) {
@@ -104,7 +108,7 @@ function findAgentFiles(dir: string): string[] {
     } catch {}
   }
   
-  searchDir(dir);
+  searchDir(repoPath);
   return files;
 }
 
@@ -188,10 +192,10 @@ function extractHandlers(content: string): string[] {
     /onChainEnd\s*\(/,
     /handleResponse\s*\(/,
     /processOutput\s*\(/,
-    /\.then\(\s*async\s+(\w+)/,
-    /\.then\(\s*(\w+)/,
-    /catch\(\s*(\w+)/,
-    /finally\(\s*(\w+)/,
+    /\.then\s*\(\s*async\s+(\w+)/,
+    /\.then\s*\((\w+)/,
+    /catch\s*\((\w+)/,
+    /finally\s*\((\w+)/,
   ];
   
   for (const pattern of handlerPatterns) {
