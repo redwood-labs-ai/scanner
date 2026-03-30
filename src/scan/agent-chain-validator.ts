@@ -41,12 +41,12 @@ export interface ValidationResult {
 /**
  * Build an orchestration graph from code analysis
  */
-function buildOrchestrationGraph(repoPath: string) {
+async function buildOrchestrationGraph(repoPath: string) {
   const nodes: AgentNode[] = [];
   const edges: Edge[] = [];
   
   // Find all agent/orchestrator files
-  const agentFiles = findAgentFiles(repoPath);
+  const agentFiles = await findAgentFiles(repoPath);
   
   for (const file of agentFiles) {
     try {
@@ -116,7 +116,7 @@ async function findAgentFiles(repoPath: string): Promise<string[]> {
  * Analyze a single agent file to extract its structure
  */
 function analyzeAgentFile(content: string, file: string): AgentNode | null {
-  const name = extractAgentName(content);
+  const name = extractAgentName(content, file);
   if (!name) return null;
   
   // Extract tool definitions
@@ -137,7 +137,7 @@ function analyzeAgentFile(content: string, file: string): AgentNode | null {
   };
 }
 
-function extractAgentName(content: string): string | null {
+function extractAgentName(content: string, file: string): string | null {
   const patterns = [
     /class\s+(\w*Agent\w*)/i,
     /export\s+const\s+(\w*Agent\w*)/,
@@ -588,7 +588,7 @@ function isIsolatedAgent(node: AgentNode, edges: Edge[]): boolean {
  */
 export async function validateAgentChain(repoPath: string): Promise<Issue[]> {
   console.log('🔍 Building orchestration graph...');
-  const graph = buildOrchestrationGraph(repoPath);
+  const graph = await buildOrchestrationGraph(repoPath);
   
   if (graph.nodes.length === 0) {
     return [];
