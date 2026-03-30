@@ -21,28 +21,32 @@ program
 	.option("--json", "Output results as JSON")
 	.option("--sarif", "Output results in SARIF format")
 	.option("--verbose", "Show detailed output")
+	.option("--severity <level>", "Minimum severity to fail on (critical|high|medium|low)", "critical")
 	.action(async (repoPath: string, options) => {
 		try {
 			if (options.verbose) {
 				console.log(chalk.dim(`Scanning ${repoPath}...`));
 			}
 
-			const issues = await scan(repoPath, { verbose: options.verbose });
+			const issues = await scan(repoPath, { verbose: options.verbose, severity: options.severity });
 
 			if (options.json) {
 				console.log(JSON.stringify(issues, null, 2));
-				process.exit(issues.some((i) => i.severity === "critical") ? 1 : 0);
+				const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, options.severity));
+				process.exit(shouldFail ? 1 : 0);
 			}
 
 			if (options.sarif) {
 				console.log(JSON.stringify(toSarif(issues, repoPath), null, 2));
-				process.exit(issues.some((i) => i.severity === "critical") ? 1 : 0);
+				const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, options.severity));
+				process.exit(shouldFail ? 1 : 0);
 			}
 
 			printResults(issues);
 
-			// Exit with error if critical issues found
-			if (issues.some((i) => i.severity === "critical")) {
+			// Exit with error if issues meet severity threshold
+			const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, options.severity));
+			if (shouldFail) {
 				process.exit(1);
 			}
 		} catch (error: any) {
@@ -77,6 +81,27 @@ program
 	});
 
 // Helper functions
+
+function getSeverityLevel(severity: string): number {
+	const levels: Record<string, number> = {
+		critical: 0,
+		high: 1,
+		medium: 2,
+		low: 3,
+		info: 4,
+	};
+	return levels[severity] ?? 5;
+}
+
+function meetsSeverityThreshold(issueSeverity: string, threshold: string | undefined): boolean {
+	if (!threshold) return issueSeverity === "critical"; // Default behavior
+	
+	const issueLevel = getSeverityLevel(issueSeverity);
+	const thresholdLevel = getSeverityLevel(threshold);
+	
+	return issueLevel <= thresholdLevel;
+}
+
 function printResults(issues: Issue[]) {
 	if (issues.length === 0) {
 		console.log(chalk.green("\n✅ No security issues found\n"));
