@@ -154,7 +154,7 @@ export function isIgnored(file: string, repoPath: string, patterns: string[]): b
 function matchesGlob(path: string, pattern: string): boolean {
   try {
     // Use glob.sync with matchOnly to check if path matches pattern
-    const result = glob.match(pattern, [path]);
+    const regexPattern = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, ".*").replace(/\*/g, "[^/]*").replace(/\?/g, "."); const regex = new RegExp("^" + regexPattern + "$"); const result = regex.test(path) ? [path] : [];
     return result.length > 0;
   } catch {
     // If glob fails, fall back to simple string matching
