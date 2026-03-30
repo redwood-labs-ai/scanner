@@ -1,0 +1,52 @@
+name: Bidirectional Unicode Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-unicode:
+    name: Detect Bidirectional Unicode Characters
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for bidirectional Unicode characters
+        run: |
+          # Bidirectional Unicode characters can be used in Trojan Source attacks
+          # to disguise malicious code that behaves differently than it appears
+          # Common bidirectional control characters:
+          # U+200E (LEFT-TO-RIGHT MARK)
+          # U+200F (RIGHT-TO-LEFT MARK)
+          # U+202A (LEFT-TO-RIGHT EMBEDDING)
+          # U+202B (RIGHT-TO-LEFT EMBEDDING)
+          # U+202C (POP DIRECTIONAL FORMATTING)
+          # U+202D (LEFT-TO-RIGHT OVERRIDE)
+          # U+202E (RIGHT-TO-LEFT OVERRIDE)
+          # U+2066 (LEFT-TO-RIGHT ISOLATE)
+          # U+2067 (RIGHT-TO-LEFT ISOLATE)
+          # U+2068 (FIRST STRONG ISOLATE)
+          # U+2069 (POP DIRECTIONAL ISOLATE)
+          
+          # Check for bidirectional characters in source files
+          # Exclude node_modules, dist, .git directories
+          if find . -type f \( -name "*.js" -o -name "*.ts" -o -name "*.json" -o -name "*.yml" -o -name "*.yaml" \) \
+            ! -path "./node_modules/*" \
+            ! -path "./dist/*" \
+            ! -path "./.git/*" \
+            ! -path "./.github/*" \
+            -exec grep -l $'[\xe2\x80\x8e\xe2\x80\x8f\xe2\x80\xaa\xe2\x80\xab\xe2\x80\xac\xe2\x80\xad\xe2\x80\xae\xe2\x81\xa6\xe2\x81\xa7\xe2\x81\xa8\xe2\x81\xa9]' {} \; 2>/dev/null | grep -q .; then
+            echo "ERROR: Bidirectional Unicode characters detected!"
+            echo "Files with bidirectional characters:"
+            find . -type f \( -name "*.js" -o -name "*.ts" -o -name "*.json" -o -name "*.yml" -o -name "*.yaml" \) \
+              ! -path "./node_modules/*" \
+              ! -path "./dist/*" \
+              ! -path "./.git/*" \
+              ! -path "./.github/*" \
+              -exec grep -H $'[\xe2\x80\x8e\xe2\x80\x8f\xe2\x80\xaa\xe2\x80\xab\xe2\x80\xac\xe2\x80\xad\xe2\x80\xae\xe2\x81\xa6\xe2\x81\xa7\xe2\x81\xa8\xe2\x81\xa9]' {} \; 2>/dev/null
+            exit 1
+          else
+            echo "No bidirectional Unicode characters found - OK"
+          fi
