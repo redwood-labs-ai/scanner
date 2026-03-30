@@ -46,6 +46,21 @@ function extractInlineIgnores(content: string): Set<number> {
 // Re-export for backwards compatibility
 export { DANGEROUS_PATTERNS, patternStats };
 
+/**
+ * Detect if a file is a pattern definition file
+ * Pattern definition files contain regex patterns as string literals
+ * that would otherwise be flagged as false positives
+ */
+function isPatternDefinitionFile(content: string): boolean {
+	// Check for common patterns in pattern definition files
+	return (
+		content.includes("definePatterns") ||
+		content.includes("DANGEROUS_PATTERNS") ||
+		/\bregex\s*:\s*[/`]/.test(content) ||
+		content.includes("scan/patterns/")
+	);
+}
+
 export async function scanPatterns(repoPath: string): Promise<Issue[]> {
 	const issues: Issue[] = [];
 
@@ -61,6 +76,13 @@ export async function scanPatterns(repoPath: string): Promise<Issue[]> {
 
 		try {
 			const content = readFileSync(file, "utf-8");
+
+			// Skip pattern definition files to avoid false positives
+			// When the scanner scans itself, pattern definition files contain
+			// regex patterns like /eval\s*\(/g which would match the eval() pattern
+			if (isPatternDefinitionFile(content)) {
+				continue;
+			}
 
 			// Extract inline ignore comments for this file
 			const ignoredLines = extractInlineIgnores(content);
