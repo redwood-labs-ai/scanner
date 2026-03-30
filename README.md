@@ -130,7 +130,6 @@ Supported comment styles:
 
 ## Known Limitations
 
-- **Self-scan false positives**: Running the scanner on its own source code will flag pattern definitions as vulnerabilities (e.g., the regex for detecting `eval()` gets flagged as eval usage). This is expected — real codebases won't have security pattern definitions.
 - **No inline ignores yet**: `// redwood-ignore-next-line` support is planned for a future release.
 
 ## License
