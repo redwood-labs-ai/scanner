@@ -4,6 +4,7 @@ import { scanDependencies } from "./deps.js";
 import { scanMCP } from "./mcp.js";
 import { scanPatterns } from "./patterns.js";
 import { scanSecrets } from "./secrets.js";
+import type { RedwoodConfig } from "./config.js";
 
 export interface Issue {
 	id: string;
@@ -19,6 +20,7 @@ export interface Issue {
 export interface ScanOptions {
 	verbose?: boolean;
 	severity?: "critical" | "high" | "medium" | "low";
+	config?: RedwoodConfig;
 }
 
 export async function scan(repoPath: string, options: ScanOptions = {}): Promise<Issue[]> {
@@ -26,38 +28,70 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 	let idCounter = 0;
 	const generateId = () => `issue-${Date.now()}-${idCounter++}`;
 
-	// Run all scanners in parallel
-	const [secrets, deps, patterns, mcp] = await Promise.all([
-		runScanner("Secrets", () => scanSecrets(repoPath), options.verbose),
-		runScanner("Dependencies", () => scanDependencies(repoPath), options.verbose),
-		runScanner("Patterns", () => scanPatterns(repoPath), options.verbose),
-		runScanner("MCP", () => scanMCP(repoPath), options.verbose),
-	]);
+	// Use config if provided, otherwise use defaults
+	const config = options.config || {
+		scanners: {
+			secrets: true,
+			dependencies: true,
+			patterns: true,
+			mcp: true,
+			agentChain: true,
+		},
+	};
 
-	// Run agent chain validation
-	let chainIssues: Issue[] = [];
-	if (options.verbose) {
-		console.log(chalk.cyan(`  🔗 Validating agent orchestration chains...`));
+	// Build scanner promises based on config
+	const scanners: [string, () => Promise<Issue[]>][] = [];
+
+	if (config.scanners?.secrets !== false) {
+		scanners.push(["Secrets", () => scanSecrets(repoPath)]);
 	}
-	try {
-		chainIssues = await validateAgentChain(repoPath);
-		if (chainIssues.length > 0 && options.verbose) {
-			console.log(chalk.dim(`  Chain validation: ${chainIssues.length} issue(s)`));
-		}
-	} catch (error) {
+	if (config.scanners?.dependencies !== false) {
+		scanners.push(["Dependencies", () => scanDependencies(repoPath)]);
+	}
+	if (config.scanners?.patterns !== false) {
+		scanners.push(["Patterns", () => scanPatterns(repoPath)]);
+	}
+	if (config.scanners?.mcp !== false) {
+		scanners.push(["MCP", () => scanMCP(repoPath)]);
+	}
+
+	// Run enabled scanners in parallel
+	const scannerResults = await Promise.all(
+		scanners.map(([name, scannerFn]) =>
+			runScanner(name, scannerFn, options.verbose)
+		)
+	);
+
+	// Run agent chain validation separately (optional)
+	let chainIssues: Issue[] = [];
+	if (config.scanners?.agentChain !== false) {
 		if (options.verbose) {
-			console.log(chalk.yellow(`  ⚠️ Chain validation skipped: ${error}`));
+			console.log(chalk.cyan(`  🔗 Validating agent orchestration chains...`));
+		}
+		try {
+			chainIssues = await validateAgentChain(repoPath);
+			if (chainIssues.length > 0 && options.verbose) {
+				console.log(chalk.dim(`  Chain validation: ${chainIssues.length} issue(s)`));
+			}
+		} catch (error) {
+			if (options.verbose) {
+				console.log(chalk.yellow(`  ⚠️ Chain validation skipped: ${error}`));
+			}
 		}
 	}
 
 	// Combine all issues with IDs
-	const allIssues = [
-		...secrets.map((i) => ({ ...i, id: generateId() })),
-		...deps.map((i) => ({ ...i, id: generateId() })),
-		...patterns.map((i) => ({ ...i, id: generateId() })),
-		...mcp.map((i) => ({ ...i, id: generateId() })),
+	const allIssues: Issue[] = [
+		...scannerResults.flatMap((issues, index) =>
+			issues.map((i) => ({ ...i, id: generateId() }))
+		),
 		...chainIssues.map((i) => ({ ...i, id: generateId() })),
 	];
+
+	// Apply max findings limit if configured
+	if (config.maxFindings && allIssues.length > config.maxFindings) {
+		allIssues.length = config.maxFindings;
+	}
 
 	// Sort by severity
 	const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };

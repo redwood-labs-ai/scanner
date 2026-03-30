@@ -1,0 +1,40 @@
+# Redwood Scanner Configuration
+# See: https://github.com/redwood-labs/scanner#configuration
+
+severity: high
+
+# Glob patterns for files to ignore
+ignore:
+  - '**/node_modules/**'
+  - '**/dist/**'
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+
+# Enable/disable specific scanners
+scanners:
+  secrets: true
+  dependencies: true
+  patterns: true
+  mcp: true
+  agentChain: true
+
+# Custom severity thresholds per rule type
+rules:
+  hardcoded-secret: critical
+  insecure-endpoint: high
+  missing-auth: high
+  weak-encryption: medium
+
+# Maximum findings per rule type (to avoid noise)
+maxFindings: 50
+
+# Output preferences
+output:
+  json: false
+  verbose: false
+
+# Additional directories to skip
+skipDirs:
+  - vendor
+  - third_party
+  - .venv

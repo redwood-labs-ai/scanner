@@ -28,6 +28,15 @@ npx @redwood-labs/scanner scan .
 redwood scan ./my-repo
 ```
 
+### Custom Config File
+```bash
+# Use a custom config file
+redwood scan ./my-repo --config /path/to/.redwoodrc.json
+
+# Use YAML config
+redwood scan ./my-repo --config .redwoodrc.yaml
+```
+
 ### Agent Chain Validation
 ```bash
 redwood agent-chain ./my-repo
@@ -40,6 +49,12 @@ redwood scan ./my-repo --json
 
 # SARIF format (for GitHub/GitLab integration)
 redwood scan ./my-repo --sarif > results.sarif
+```
+
+### Severity Threshold
+```bash
+# Fail on medium or higher severity
+redwood scan ./my-repo --severity medium
 ```
 
 ## Programmatic Usage
@@ -84,7 +99,97 @@ const chainIssues = await validateAgentChain('./my-repo');
 - `0` — No critical issues found
 - `1` — Critical issues detected
 
-## Ignoring Files
+## Configuration
+
+Create a `.redwoodrc.json` or `.redwoodrc.yaml` file in your project root to customize scanner behavior:
+
+### Example `.redwoodrc.json`
+```json
+{
+  "severity": "high",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.test.ts"
+  ],
+  "scanners": {
+    "secrets": true,
+    "dependencies": true,
+    "patterns": true,
+    "mcp": true,
+    "agentChain": true
+  },
+  "rules": {
+    "hardcoded-secret": "critical",
+    "insecure-endpoint": "high"
+  },
+  "maxFindings": 50,
+  "output": {
+    "json": false,
+    "verbose": false
+  },
+  "skipDirs": ["vendor", "third_party"]
+}
+```
+
+### Example `.redwoodrc.yaml`
+```yaml
+severity: high
+
+ignore:
+  - '**/node_modules/**'
+  - '**/dist/**'
+  - '**/*.test.ts'
+
+scanners:
+  secrets: true
+  dependencies: true
+  patterns: true
+  mcp: true
+  agentChain: true
+
+rules:
+  hardcoded-secret: critical
+  insecure-endpoint: high
+
+maxFindings: 50
+
+output:
+  json: false
+  verbose: false
+
+skipDirs:
+  - vendor
+  - third_party
+```
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `severity` | string | `"critical"` | Minimum severity to fail scan (`critical`/`high`/`medium`/`low`/`info`) |
+| `ignore` | string[] | `[]` | Glob patterns for files to ignore |
+| `scanners` | object | `{}` | Enable/disable specific scanners (all enabled by default) |
+| `scanners.secrets` | boolean | `true` | Enable secrets scanning |
+| `scanners.dependencies` | boolean | `true` | Enable dependency scanning |
+| `scanners.patterns` | boolean | `true` | Enable code pattern analysis |
+| `scanners.mcp` | boolean | `true` | Enable MCP server scanning |
+| `scanners.agentChain` | boolean | `true` | Enable agent chain validation |
+| `rules` | object | `{}` | Override severity per rule type |
+| `maxFindings` | number | `100` | Maximum findings per rule type |
+| `output.json` | boolean | `false` | Output results as JSON |
+| `output.sarif` | boolean | `false` | Output results in SARIF format |
+| `output.verbose` | boolean | `false` | Show detailed output |
+| `skipDirs` | string[] | `[]` | Additional directories to skip |
+
+### Custom Config Path
+
+Use `--config` to specify a custom config file location:
+```bash
+redwood scan ./my-repo --config /path/to/.redwoodrc.json
+```
+
+CLI options always override config file settings.
 
 Create `.redwoodignore` in your repo root:
 ```
