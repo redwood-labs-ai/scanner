@@ -1,0 +1,19 @@
+{
+  "severity": "high",
+  "verbose": false,
+  "scanners": {
+    "secrets": true,
+    "dependencies": true,
+    "patterns": true,
+    "mcp": true,
+    "agentChain": true
+  },
+  "rules": {},
+  "maxFindings": 100,
+  "output": {
+    "json": false,
+    "sarif": false,
+    "verbose": false
+  },
+  "skipDirs": []
+}

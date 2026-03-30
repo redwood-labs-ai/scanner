@@ -7,6 +7,7 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
+import { loadConfig, loadConfigFromPath } from "./scan/config.js";
 import { validateAgentChain } from "./scan/agent-chain-validator.js";
 import { type Issue, scan } from "./scan/engine.js";
 
@@ -18,34 +19,58 @@ program
 	.command("scan")
 	.description("Run security scan on a repository")
 	.argument("<path>", "Path to repository")
+	.option("--config <path>", "Path to .redwoodrc file")
 	.option("--json", "Output results as JSON")
 	.option("--sarif", "Output results in SARIF format")
 	.option("--verbose", "Show detailed output")
 	.option("--severity <level>", "Minimum severity to fail on (critical|high|medium|low)", "critical")
 	.action(async (repoPath: string, options) => {
 		try {
+			// Load config if specified, otherwise search for it
+			let config = await loadConfig(repoPath);
+			
+			if (options.config) {
+				// User specified a custom config path
+				config = await loadConfigFromPath(options.config);
+			}
+			
+			// CLI options override config file
+			if (options.verbose !== undefined) config.output = { ...config.output, verbose: options.verbose };
+			if (options.severity !== undefined) config.severity = options.severity as any;
+			if (options.json) config.output = { ...config.output, json: true };
+			if (options.sarif) config.output = { ...config.output, sarif: true };
+			
 			if (options.verbose) {
 				console.log(chalk.dim(`Scanning ${repoPath}...`));
 			}
 
-			const issues = await scan(repoPath, { verbose: options.verbose, severity: options.severity });
+			const issues = await scan(repoPath, { 
+				verbose: options.verbose || config.output?.verbose, 
+				severity: options.severity || config.severity,
+				config 
+			});
 
-			if (options.json) {
+			// Determine output format
+			const useJson = options.json || config.output?.json;
+			const useSarif = options.sarif || config.output?.sarif;
+			const effectiveSeverity = options.severity || config.severity || "critical";
+
+			if (useJson) {
 				console.log(JSON.stringify(issues, null, 2));
-				const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, options.severity));
+				const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, effectiveSeverity));
 				process.exit(shouldFail ? 1 : 0);
 			}
 
-			if (options.sarif) {
+			if (useSarif) {
 				console.log(JSON.stringify(toSarif(issues, repoPath), null, 2));
-				const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, options.severity));
+				const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, effectiveSeverity));
 				process.exit(shouldFail ? 1 : 0);
 			}
 
 			printResults(issues);
 
 			// Exit with error if issues meet severity threshold
-			const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, options.severity));
+			const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, effectiveSeverity));
 			if (shouldFail) {
 				process.exit(1);
 			}

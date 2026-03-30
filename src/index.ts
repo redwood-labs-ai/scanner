@@ -4,13 +4,16 @@
  *
  * @example
  * ```typescript
- * import { scan, validateAgentChain } from '@redwood-labs/scanner';
+ * import { scan, validateAgentChain, loadConfig } from '@redwood-labs/scanner';
  *
  * // Full security scan
  * const issues = await scan('./my-repo');
  *
  * // Agent chain validation only
  * const chainIssues = await validateAgentChain('./my-repo');
+ *
+ * // Load configuration
+ * const config = await loadConfig('./my-repo');
  * ```
  */
 
@@ -20,3 +23,4 @@ export { type Issue, type ScanOptions, scan } from "./scan/engine.js";
 export { scanMCP } from "./scan/mcp.js";
 export { scanPatterns } from "./scan/patterns.js";
 export { scanSecrets } from "./scan/secrets.js";
+export { loadConfig, loadConfigFromPath, type RedwoodConfig } from "./scan/config.js";
