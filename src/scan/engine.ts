@@ -18,6 +18,7 @@ export interface Issue {
 
 export interface ScanOptions {
 	verbose?: boolean;
+	severity?: "critical" | "high" | "medium" | "low";
 }
 
 export async function scan(repoPath: string, options: ScanOptions = {}): Promise<Issue[]> {
