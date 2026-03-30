@@ -73,4 +73,12 @@ export default definePatterns([
 		fix: "Use crypto.randomBytes() or crypto.getRandomValues() for security-sensitive random values",
 		fileTypes: [".js", ".ts"],
 	},
+	{
+		name: "minimatch nested extglob ReDoS (CVE-2026-27904)",
+		regex: /minimatch\s*[\(\s]|require\s*\(.*['"]minimatch['"]|from\s*['"]minimatch['"]/g,
+		severity: "high",
+		message: "minimatch with nested extglob patterns can cause ReDoS. Pattern like '*(*(*(a|b)))' causes catastrophic backtracking",
+		fix: "Upgrade minimatch to >=10.2.3, >=9.0.7, >=8.0.6, >=7.4.8, >=6.2.2, >=5.1.8, >=4.2.5, or >=3.1.4. Validate input patterns and avoid nested extglobs",
+		fileTypes: [".js", ".ts", ".mjs"],
+	},
 ]);
