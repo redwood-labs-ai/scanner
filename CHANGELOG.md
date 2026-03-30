@@ -11,6 +11,8 @@
 - **Custom severity per rule** — Override default severity levels in config
 - **Max findings limit** — Cap findings per rule type to reduce noise
 - **Comprehensive unit tests** — 23 tests covering pattern detection
+- **minimatch ReDoS pattern** — Detects CVE-2026-27904 (nested extglob vulnerability)
+- **path-to-regexp ReDoS pattern** — Detects CVE-2026-4926 (sequential optional groups)
 
 ### Changed
 - Upgraded glob from 10.x to 13.x (fixes deprecation warnings)
