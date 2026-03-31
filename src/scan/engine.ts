@@ -20,6 +20,7 @@ export interface Issue {
 export interface ScanOptions {
 	verbose?: boolean;
 	severity?: "critical" | "high" | "medium" | "low";
+	bypassIgnore?: boolean;
 	config?: RedwoodConfig;
 }
 
@@ -49,7 +50,7 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 		scanners.push(["Dependencies", () => scanDependencies(repoPath)]);
 	}
 	if (config.scanners?.patterns !== false) {
-		scanners.push(["Patterns", () => scanPatterns(repoPath)]);
+		scanners.push(["Patterns", () => scanPatterns(repoPath, options.bypassIgnore)]);
 	}
 	if (config.scanners?.mcp !== false) {
 		scanners.push(["MCP", () => scanMCP(repoPath)]);
@@ -73,7 +74,7 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 			}
 		} catch (error) {
 			if (options.verbose) {
-				console.log(chalk.yellow(`  ⚠️ Chain validation skipped: ${error}`));
+				console.log(chalk.yellow(`  ⚠️  Chain validation skipped: ${error}`));
 			}
 		}
 	}
