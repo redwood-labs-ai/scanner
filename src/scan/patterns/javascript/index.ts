@@ -75,17 +75,20 @@ export default definePatterns([
 	},
 	{
 		name: "minimatch nested extglob ReDoS (CVE-2026-27904)",
-		regex: /minimatch\s*[\(\s]|require\s*\(.*['"]minimatch['"]|from\s*['"]minimatch['"]/g,
+		regex: /minimatch\s*[(\s]|require\s*\(.*['"]minimatch['"]|from\s*['"]minimatch['"]/g,
 		severity: "high",
-		message: "minimatch with nested extglob patterns can cause ReDoS. Pattern like '*(*(*(a|b)))' causes catastrophic backtracking",
+		message:
+			"minimatch with nested extglob patterns can cause ReDoS. Pattern like '*(*(*(a|b)))' causes catastrophic backtracking",
 		fix: "Upgrade minimatch to >=10.2.3, >=9.0.7, >=8.0.6, >=7.4.8, >=6.2.2, >=5.1.8, >=4.2.5, or >=3.1.4. Validate input patterns and avoid nested extglobs",
 		fileTypes: [".js", ".ts", ".mjs"],
 	},
 	{
 		name: "path-to-regexp sequential optional groups ReDoS (CVE-2026-4926)",
-		regex: /path-to-regexp\s*[\(\s]|require\s*\(.*['"]path-to-regexp['"]|from\s*['"]path-to-regexp['"]|\{[^}]+\}\{[^}]+\}\{[^}]+\}/g,
+		regex:
+			/path-to-regexp\s*[(\s]|require\s*\(.*['"]path-to-regexp['"]|from\s*['"]path-to-regexp['"]|\{[^}]+\}\{[^}]+\}\{[^}]+\}/g,
 		severity: "high",
-		message: "path-to-regexp with sequential optional groups (curly brace syntax like '{a}{b}{c}') can cause ReDoS. The generated regex grows exponentially with the number of groups",
+		message:
+			"path-to-regexp with sequential optional groups (curly brace syntax like '{a}{b}{c}') can cause ReDoS. The generated regex grows exponentially with the number of groups",
 		fix: "Upgrade path-to-regexp to >=8.4.0. Avoid patterns with multiple sequential optional groups. Use explicit path parameters instead of multiple optional segments",
 		fileTypes: [".js", ".ts", ".mjs"],
 	},

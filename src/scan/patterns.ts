@@ -88,7 +88,6 @@ export async function scanPatterns(repoPath: string): Promise<Issue[]> {
 
 		try {
 			const content = readFileSync(file, "utf-8");
-			const lines = content.split("\n");
 
 			// Skip pattern definition files to avoid false positives
 			// When the scanner scans itself, pattern definition files contain
