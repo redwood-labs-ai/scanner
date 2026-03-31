@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.redwoodlabs.ai/redwoodrc.json",
+  "title": "Redwood Scanner Configuration",
+  "type": "object",
+  "properties": {
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "info"],
+      "default": "critical",
+      "description": "Minimum severity threshold to fail the scan"
+    },
+    "ignore": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Glob patterns for files/directories to ignore"
+    },
+    "scanners": {
+      "type": "object",
+      "description": "Enable/disable specific scanners",
+      "properties": {
+        "secrets": {
+          "type": "boolean",
+          "default": true
+        },
+        "dependencies": {
+          "type": "boolean",
+          "default": true
+        },
+        "patterns": {
+          "type": "boolean",
+          "default": true
+        },
+        "mcp": {
+          "type": "boolean",
+          "default": true
+        },
+        "agentChain": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["critical", "high", "medium", "low", "info", "off"]
+      },
+      "description": "Custom severity thresholds per rule type"
+    },
+    "maxFindings": {
+      "type": "integer",
+      "default": 100,
+      "description": "Maximum findings per rule type"
+    },
+    "output": {
+      "type": "object",
+      "description": "Output format preferences",
+      "properties": {
+        "json": {
+          "type": "boolean",
+          "default": false
+        },
+        "sarif": {
+          "type": "boolean",
+          "default": false
+        },
+        "verbose": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "skipDirs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional directories to skip"
+    }
+  },
+  "additionalProperties": false
+}

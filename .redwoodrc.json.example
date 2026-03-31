@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schemas.redwoodlabs.ai/redwoodrc.json",
+  "severity": "high",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "scanners": {
+    "secrets": true,
+    "dependencies": true,
+    "patterns": true,
+    "mcp": true,
+    "agentChain": true
+  },
+  "rules": {
+    "hardcoded-secret": "critical",
+    "insecure-endpoint": "high",
+    "missing-auth": "high",
+    "weak-encryption": "medium"
+  },
+  "maxFindings": 50,
+  "output": {
+    "json": false,
+    "verbose": false
+  },
+  "skipDirs": [
+    "vendor",
+    "third_party",
+    ".venv"
+  ]
+}
