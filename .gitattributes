@@ -1,0 +1,9 @@
+# Ensure all text files use UTF-8 encoding
+* text=auto eol=lf
+*.js text
+*.ts text
+*.json text
+*.md text
+*.yml text
+*.yaml text
+*.sh text
