@@ -1,10 +1,10 @@
 import chalk from "chalk";
 import { validateAgentChain } from "./agent-chain-validator.js";
+import type { RedwoodConfig } from "./config.js";
 import { scanDependencies } from "./deps.js";
 import { scanMCP } from "./mcp.js";
 import { scanPatterns } from "./patterns.js";
 import { scanSecrets } from "./secrets.js";
-import type { RedwoodConfig } from "./config.js";
 
 export interface Issue {
 	id: string;
@@ -57,9 +57,7 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 
 	// Run enabled scanners in parallel
 	const scannerResults = await Promise.all(
-		scanners.map(([name, scannerFn]) =>
-			runScanner(name, scannerFn, options.verbose)
-		)
+		scanners.map(([name, scannerFn]) => runScanner(name, scannerFn, options.verbose))
 	);
 
 	// Run agent chain validation separately (optional)
@@ -82,9 +80,7 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 
 	// Combine all issues with IDs
 	const allIssues: Issue[] = [
-		...scannerResults.flatMap((issues, index) =>
-			issues.map((i) => ({ ...i, id: generateId() }))
-		),
+		...scannerResults.flatMap((issues, _index) => issues.map((i) => ({ ...i, id: generateId() }))),
 		...chainIssues.map((i) => ({ ...i, id: generateId() })),
 	];
 

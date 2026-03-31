@@ -7,8 +7,8 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import { loadConfig, loadConfigFromPath } from "./scan/config.js";
 import { validateAgentChain } from "./scan/agent-chain-validator.js";
+import { loadConfig, loadConfigFromPath } from "./scan/config.js";
 import { type Issue, scan } from "./scan/engine.js";
 
 const program = new Command();
@@ -23,31 +23,36 @@ program
 	.option("--json", "Output results as JSON")
 	.option("--sarif", "Output results in SARIF format")
 	.option("--verbose", "Show detailed output")
-	.option("--severity <level>", "Minimum severity to fail on (critical|high|medium|low)", "critical")
+	.option(
+		"--severity <level>",
+		"Minimum severity to fail on (critical|high|medium|low)",
+		"critical"
+	)
 	.action(async (repoPath: string, options) => {
 		try {
 			// Load config if specified, otherwise search for it
 			let config = await loadConfig(repoPath);
-			
+
 			if (options.config) {
 				// User specified a custom config path
 				config = await loadConfigFromPath(options.config);
 			}
-			
+
 			// CLI options override config file
-			if (options.verbose !== undefined) config.output = { ...config.output, verbose: options.verbose };
+			if (options.verbose !== undefined)
+				config.output = { ...config.output, verbose: options.verbose };
 			if (options.severity !== undefined) config.severity = options.severity as any;
 			if (options.json) config.output = { ...config.output, json: true };
 			if (options.sarif) config.output = { ...config.output, sarif: true };
-			
+
 			if (options.verbose) {
 				console.log(chalk.dim(`Scanning ${repoPath}...`));
 			}
 
-			const issues = await scan(repoPath, { 
-				verbose: options.verbose || config.output?.verbose, 
+			const issues = await scan(repoPath, {
+				verbose: options.verbose || config.output?.verbose,
 				severity: options.severity || config.severity,
-				config 
+				config,
 			});
 
 			// Determine output format
@@ -57,13 +62,17 @@ program
 
 			if (useJson) {
 				console.log(JSON.stringify(issues, null, 2));
-				const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, effectiveSeverity));
+				const shouldFail = issues.some((i) =>
+					meetsSeverityThreshold(i.severity, effectiveSeverity)
+				);
 				process.exit(shouldFail ? 1 : 0);
 			}
 
 			if (useSarif) {
 				console.log(JSON.stringify(toSarif(issues, repoPath), null, 2));
-				const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, effectiveSeverity));
+				const shouldFail = issues.some((i) =>
+					meetsSeverityThreshold(i.severity, effectiveSeverity)
+				);
 				process.exit(shouldFail ? 1 : 0);
 			}
 
@@ -120,10 +129,10 @@ function getSeverityLevel(severity: string): number {
 
 function meetsSeverityThreshold(issueSeverity: string, threshold: string | undefined): boolean {
 	if (!threshold) return issueSeverity === "critical"; // Default behavior
-	
+
 	const issueLevel = getSeverityLevel(issueSeverity);
 	const thresholdLevel = getSeverityLevel(threshold);
-	
+
 	return issueLevel <= thresholdLevel;
 }
 
