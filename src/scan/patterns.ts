@@ -25,13 +25,6 @@ import { DANGEROUS_PATTERNS, patternStats } from "./patterns/index.js";
  */
 const INLINE_IGNORE_PATTERN = /\s*(\/\/|#)\s*redwood-ignore(?:\s*:\s*(.*))?/i;
 
-interface InlineBypass {
-	line: number;
-	reason: string;
-	patternName: string;
-	matchedCode: string;
-}
-
 /**
  * Extract inline ignore comments from a file and map them to line numbers
  * Returns an object with line numbers and their reasons
