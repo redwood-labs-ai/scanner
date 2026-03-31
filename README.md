@@ -235,7 +235,7 @@ Supported comment styles:
 
 ## Known Limitations
 
-- **No inline ignores yet**: `// redwood-ignore-next-line` support is planned for a future release.
+- **Inline ignores**: Use `// redwood-ignore` or `# redwood-ignore` to suppress specific findings. In critical mode, use `--bypass-ignore` flag to include bypassed findings as high-severity issues.
 
 ## License
 
