@@ -72,7 +72,10 @@ interface BypassInfo {
 	matchedCode: string;
 }
 
-export async function scanPatterns(repoPath: string, bypassIgnore: boolean = false): Promise<Issue[]> {
+export async function scanPatterns(
+	repoPath: string,
+	bypassIgnore: boolean = false
+): Promise<Issue[]> {
 	const issues: Issue[] = [];
 	const bypasses: BypassInfo[] = [];
 
