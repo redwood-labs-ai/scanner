@@ -72,7 +72,10 @@ interface BypassInfo {
 	matchedCode: string;
 }
 
-export async function scanPatterns(repoPath: string): Promise<Issue[]> {
+export async function scanPatterns(
+	repoPath: string,
+	bypassIgnore: boolean = false
+): Promise<Issue[]> {
 	const issues: Issue[] = [];
 	const bypasses: BypassInfo[] = [];
 
@@ -114,16 +117,30 @@ export async function scanPatterns(repoPath: string): Promise<Issue[]> {
 
 					// Check if this line has an inline ignore comment
 					if (ignoredLines.has(lineNumber)) {
-						// Log the bypass with metadata
 						const reason = ignoredLines.get(lineNumber) || "no reason";
-						bypasses.push({
+						const bypass: BypassInfo = {
 							file: relPath,
 							line: lineNumber,
 							patternName: pattern.name,
 							reason: reason,
 							matchedCode: match[0].slice(0, 50),
-						});
-						// Skip this finding
+						};
+						bypasses.push(bypass);
+
+						// In critical mode (bypassIgnore), include bypassed findings as issues
+						if (bypassIgnore) {
+							issues.push({
+								id: `pattern-bypass-${issues.length + 1}`,
+								type: `${pattern.name} (bypassed)`,
+								severity: "high", // Bypassed issues are treated as high severity in critical mode
+								file: relPath,
+								line: lineNumber,
+								message: `Bypassed with inline ignore: ${pattern.message}`,
+								match: match[0].slice(0, 50),
+								fix: `Remove inline bypass and fix the issue. Original reason: ${reason}`,
+							});
+						}
+						// Skip this finding in normal mode
 						continue;
 					}
 
@@ -144,8 +161,8 @@ export async function scanPatterns(repoPath: string): Promise<Issue[]> {
 		}
 	}
 
-	// Log bypasses if any were found
-	if (bypasses.length > 0) {
+	// Log bypasses if any were found (in normal mode only)
+	if (bypasses.length > 0 && !bypassIgnore) {
 		console.log(`\n🚫 Inline Bypasses (${bypasses.length} total):\n`);
 		for (const bypass of bypasses) {
 			console.log(

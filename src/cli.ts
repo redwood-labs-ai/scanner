@@ -23,6 +23,7 @@ program
 	.option("--json", "Output results as JSON")
 	.option("--sarif", "Output results in SARIF format")
 	.option("--verbose", "Show detailed output")
+	.option("--bypass-ignore", "Critical mode: include bypassed findings as issues")
 	.option(
 		"--severity <level>",
 		"Minimum severity to fail on (critical|high|medium|low)",
@@ -52,6 +53,7 @@ program
 			const issues = await scan(repoPath, {
 				verbose: options.verbose || config.output?.verbose,
 				severity: options.severity || config.severity,
+				bypassIgnore: options.bypassIgnore || false,
 				config,
 			});
 
