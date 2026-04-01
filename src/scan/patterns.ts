@@ -21,22 +21,25 @@ import { DANGEROUS_PATTERNS, patternStats } from "./patterns/index.js";
 /**
  * Inline ignore comment patterns for different languages
  * Supports: // redwood-ignore, # redwood-ignore
+ * Also captures optional reason after colon: redwood-ignore: reason
  */
-const INLINE_IGNORE_PATTERN = /\s*(\/\/|#)\s*redwood-ignore/i;
+const INLINE_IGNORE_PATTERN = /\s*(\/\/|#)\s*redwood-ignore(?:\s*:\s*(.*))?/i;
 
 /**
  * Extract inline ignore comments from a file and map them to line numbers
- * Returns a Set of line numbers that have ignore comments
+ * Returns an object with line numbers and their reasons
  */
-function extractInlineIgnores(content: string): Set<number> {
-	const ignoredLines = new Set<number>();
+function extractInlineIgnores(content: string): Map<number, string> {
+	const ignoredLines = new Map<number, string>();
 	const lines = content.split("\n");
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i];
-		// Check if line contains an inline ignore comment
-		if (INLINE_IGNORE_PATTERN.test(line)) {
-			ignoredLines.add(i + 1); // Convert to 1-indexed line number
+		const match = line.match(INLINE_IGNORE_PATTERN);
+		if (match) {
+			// Extract the reason (capture group 2), default to empty if not provided
+			const reason = match[2]?.trim() || "no reason provided";
+			ignoredLines.set(i + 1, reason); // Convert to 1-indexed line number
 		}
 	}
 
@@ -61,8 +64,20 @@ function isPatternDefinitionFile(content: string): boolean {
 	);
 }
 
-export async function scanPatterns(repoPath: string): Promise<Issue[]> {
+interface BypassInfo {
+	file: string;
+	line: number;
+	patternName: string;
+	reason: string;
+	matchedCode: string;
+}
+
+export async function scanPatterns(
+	repoPath: string,
+	bypassIgnore: boolean = false
+): Promise<Issue[]> {
 	const issues: Issue[] = [];
+	const bypasses: BypassInfo[] = [];
 
 	// Load .redwoodignore patterns
 	const ignoreConfig = await loadRedwoodIgnore(repoPath);
@@ -100,8 +115,32 @@ export async function scanPatterns(repoPath: string): Promise<Issue[]> {
 					const beforeMatch = content.slice(0, match.index);
 					const lineNumber = beforeMatch.split("\n").length;
 
-					// Skip if this line has an inline ignore comment
+					// Check if this line has an inline ignore comment
 					if (ignoredLines.has(lineNumber)) {
+						const reason = ignoredLines.get(lineNumber) || "no reason";
+						const bypass: BypassInfo = {
+							file: relPath,
+							line: lineNumber,
+							patternName: pattern.name,
+							reason: reason,
+							matchedCode: match[0].slice(0, 50),
+						};
+						bypasses.push(bypass);
+
+						// In critical mode (bypassIgnore), include bypassed findings as issues
+						if (bypassIgnore) {
+							issues.push({
+								id: `pattern-bypass-${issues.length + 1}`,
+								type: `${pattern.name} (bypassed)`,
+								severity: "high", // Bypassed issues are treated as high severity in critical mode
+								file: relPath,
+								line: lineNumber,
+								message: `Bypassed with inline ignore: ${pattern.message}`,
+								match: match[0].slice(0, 50),
+								fix: `Remove inline bypass and fix the issue. Original reason: ${reason}`,
+							});
+						}
+						// Skip this finding in normal mode
 						continue;
 					}
 
@@ -119,6 +158,16 @@ export async function scanPatterns(repoPath: string): Promise<Issue[]> {
 			}
 		} catch (_error) {
 			// Skip files that can't be read
+		}
+	}
+
+	// Log bypasses if any were found (in normal mode only)
+	if (bypasses.length > 0 && !bypassIgnore) {
+		console.log(`\n🚫 Inline Bypasses (${bypasses.length} total):\n`);
+		for (const bypass of bypasses) {
+			console.log(
+				`  - ${bypass.file}:${bypass.line} - ${bypass.patternName} (reason: ${bypass.reason})`
+			);
 		}
 	}
 
