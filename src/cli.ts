@@ -5,7 +5,7 @@
  * Security scanner for AI-native codebases
  */
 
-import chalk from "chalk";
+import { ansi } from "./ansi.js";
 import { Command } from "commander";
 import { validateAgentChain } from "./scan/agent-chain-validator.js";
 import { loadConfig, loadConfigFromPath } from "./scan/config.js";
@@ -47,7 +47,7 @@ program
 			if (options.sarif) config.output = { ...config.output, sarif: true };
 
 			if (options.verbose) {
-				console.log(chalk.dim(`Scanning ${repoPath}...`));
+				console.log(ansi.dim(`Scanning ${repoPath}...`));
 			}
 
 			const issues = await scan(repoPath, {
@@ -86,7 +86,7 @@ program
 				process.exit(1);
 			}
 		} catch (error: any) {
-			console.error(chalk.red("Error:"), error.message);
+			console.error(ansi.red("Error:"), error.message);
 			process.exit(1);
 		}
 	});
@@ -98,7 +98,7 @@ program
 	.option("--json", "Output results as JSON")
 	.action(async (repoPath: string, options) => {
 		try {
-			console.log(chalk.dim("Analyzing agent orchestration..."));
+			console.log(ansi.dim("Analyzing agent orchestration..."));
 			const issues = await validateAgentChain(repoPath);
 
 			if (options.json) {
@@ -111,7 +111,7 @@ program
 				process.exit(1);
 			}
 		} catch (error: any) {
-			console.error(chalk.red("Error:"), error.message);
+			console.error(ansi.red("Error:"), error.message);
 			process.exit(1);
 		}
 	});
@@ -140,12 +140,12 @@ function meetsSeverityThreshold(issueSeverity: string, threshold: string | undef
 
 function printResults(issues: Issue[]) {
 	if (issues.length === 0) {
-		console.log(chalk.green("\n✅ No security issues found\n"));
+		console.log(ansi.green("\n✅ No security issues found\n"));
 		return;
 	}
 
 	console.log(`\n${"─".repeat(50)}`);
-	console.log(chalk.bold(`Found ${issues.length} issue(s):`));
+	console.log(ansi.bold(`Found ${issues.length} issue(s):`));
 	console.log("─".repeat(50));
 
 	// Group by type
@@ -172,26 +172,26 @@ function printResults(issues: Issue[]) {
 		const sev = findings[0].severity;
 		const icon = getSeverityIcon(sev);
 
-		console.log(`\n${icon} ${chalk.bold(type)} (${findings.length})`);
-		console.log(chalk.dim(`   ${findings[0].message}`));
+		console.log(`\n${icon} ${ansi.bold(type)} (${findings.length})`);
+		console.log(ansi.dim(`   ${findings[0].message}`));
 		if (findings[0].fix) {
-			console.log(chalk.cyan(`   Fix: ${findings[0].fix.split("\n")[0]}`));
+			console.log(ansi.cyan(`   Fix: ${findings[0].fix.split("\n")[0]}`));
 		}
 		console.log("   Files:");
 
 		const maxFiles = 5;
 		findings.slice(0, maxFiles).forEach((f) => {
 			const loc = f.line ? `${f.file}:${f.line}` : f.file;
-			console.log(chalk.dim(`   - ${loc}`));
+			console.log(ansi.dim(`   - ${loc}`));
 		});
 		if (findings.length > maxFiles) {
-			console.log(chalk.dim(`   ... and ${findings.length - maxFiles} more`));
+			console.log(ansi.dim(`   ... and ${findings.length - maxFiles} more`));
 		}
 	}
 
 	// Summary
 	console.log(`\n${"─".repeat(50)}`);
-	console.log(chalk.bold("Summary"));
+	console.log(ansi.bold("Summary"));
 	console.log("─".repeat(50));
 
 	const bySev = { critical: 0, high: 0, medium: 0, low: 0 };
