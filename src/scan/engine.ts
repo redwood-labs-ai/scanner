@@ -1,4 +1,4 @@
-import chalk from "chalk";
+import { ansi } from "../ansi.js";
 import { validateAgentChain } from "./agent-chain-validator.js";
 import type { RedwoodConfig } from "./config.js";
 import { scanDependencies } from "./deps.js";
@@ -65,16 +65,16 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 	let chainIssues: Issue[] = [];
 	if (config.scanners?.agentChain !== false) {
 		if (options.verbose) {
-			console.log(chalk.cyan(`  🔗 Validating agent orchestration chains...`));
+			console.log(ansi.cyan(`  🔗 Validating agent orchestration chains...`));
 		}
 		try {
 			chainIssues = await validateAgentChain(repoPath);
 			if (chainIssues.length > 0 && options.verbose) {
-				console.log(chalk.dim(`  Chain validation: ${chainIssues.length} issue(s)`));
+				console.log(ansi.dim(`  Chain validation: ${chainIssues.length} issue(s)`));
 			}
 		} catch (error) {
 			if (options.verbose) {
-				console.log(chalk.yellow(`  ⚠️  Chain validation skipped: ${error}`));
+				console.log(ansi.yellow(`  ⚠️  Chain validation skipped: ${error}`));
 			}
 		}
 	}
@@ -103,18 +103,18 @@ async function runScanner(
 	verbose?: boolean
 ): Promise<Issue[]> {
 	if (verbose) {
-		console.log(chalk.dim(`  Scanning: ${name}...`));
+		console.log(ansi.dim(`  Scanning: ${name}...`));
 	}
 
 	try {
 		const issues = await scanner();
 		if (verbose && issues.length > 0) {
-			console.log(chalk.dim(`  ${name}: ${issues.length} issue(s)`));
+			console.log(ansi.dim(`  ${name}: ${issues.length} issue(s)`));
 		}
 		return issues;
 	} catch (error) {
 		if (verbose) {
-			console.log(chalk.red(`  ${name}: error - ${error}`));
+			console.log(ansi.red(`  ${name}: error - ${error}`));
 		}
 		return [];
 	}

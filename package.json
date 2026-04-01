@@ -13,8 +13,8 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "tsup src/cli.ts src/index.ts --format esm --clean",
-		"dev": "tsup src/cli.ts src/index.ts --format esm --watch",
+		"build": "tsup src/cli.ts src/index.ts src/ansi.ts --format esm --clean",
+		"dev": "tsup src/cli.ts src/index.ts src/ansi.ts --format esm --watch",
 		"test": "tsx --test",
 		"lint": "tsc --noEmit && npx @biomejs/biome check --write .",
 		"format": "npx @biomejs/biome format --write .",
@@ -47,7 +47,6 @@
 		"node": ">=18"
 	},
 	"dependencies": {
-		"chalk": "^5.3.0",
 		"commander": "^12.0.0",
 		"glob": "^13.0.6",
 		"simple-git": "^3.22.0"
