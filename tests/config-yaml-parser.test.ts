@@ -1,96 +1,10 @@
 /**
- * Tests for the hand-rolled YAML parser in src/scan/config.ts
- *
- * These tests demonstrate the parser's limitations and failures
- * with real-world YAML config files.
+ * Tests for the YAML parser in src/scan/config.ts
  */
 
 import * as assert from "node:assert/strict";
 import { describe, it } from "node:test";
-
-// Copy of the parser functions from src/scan/config.ts for testing
-function parseValue(value: string): unknown {
-	if (!value) {
-		return null;
-	}
-
-	// Boolean
-	if (value.toLowerCase() === "true") return true;
-	if (value.toLowerCase() === "false") return false;
-
-	// Null
-	if (value.toLowerCase() === "null" || value === "~") return null;
-
-	// Number
-	if (/^-?\d+$/.test(value)) return parseInt(value, 10);
-	if (/^-?\d+\.\d+$/.test(value)) return parseFloat(value);
-
-	// Quoted string
-	if (
-		(value.startsWith('"') && value.endsWith('"')) ||
-		(value.startsWith("'") && value.endsWith("'"))
-	) {
-		return value.slice(1, -1);
-	}
-
-	// Plain string
-	return value;
-}
-
-function parseYaml(content: string): Record<string, unknown> {
-	const result: Record<string, unknown> = {};
-	const lines = content.split("\n");
-	let _currentKey: string | null = null;
-	let currentNested: Record<string, unknown> | null = null;
-	let nestedKey: string | null = null;
-
-	for (const line of lines) {
-		const trimmed = line.trim();
-
-		// Skip empty lines and comments
-		if (!trimmed || trimmed.startsWith("#")) {
-			continue;
-		}
-
-		// Check if this is a key-value pair
-		const colonIndex = trimmed.indexOf(":");
-		if (colonIndex === -1) {
-			// This might be an array item
-			if (trimmed.startsWith("- ") && currentNested && nestedKey) {
-				const value = trimmed.slice(2).trim();
-				if (!Array.isArray(currentNested[nestedKey])) {
-					currentNested[nestedKey] = [];
-				}
-				(currentNested[nestedKey] as string[]).push(value);
-			}
-			continue;
-		}
-
-		const key = trimmed.slice(0, colonIndex).trim();
-		const value = trimmed.slice(colonIndex + 1).trim();
-
-		if (currentNested && nestedKey) {
-			// We're inside a nested object
-			currentNested[key] = parseValue(value);
-		} else {
-			// Check if this is a nested object (value is empty or has more keys)
-			if (!value || value === "{") {
-				_currentKey = key;
-				currentNested = {};
-				result[key] = currentNested;
-				nestedKey = key;
-			} else {
-				// Simple key-value
-				_currentKey = key;
-				result[key] = parseValue(value);
-				currentNested = null;
-				nestedKey = null;
-			}
-		}
-	}
-
-	return result;
-}
+import { parseValue, parseYaml } from "../src/scan/config.ts";
 
 describe("YAML Parser Edge Cases", () => {
 	it("should parse simple flat config", () => {
@@ -103,7 +17,7 @@ maxFindings: 50
 		assert.strictEqual(result.maxFindings, 50);
 	});
 
-	it.skip("FAIL: should parse nested objects with multiple keys", () => {
+	it("should parse nested objects with multiple keys", () => {
 		const yaml = `
 scanners:
   secrets: true
@@ -111,19 +25,13 @@ scanners:
 		`;
 		const result = parseYaml(yaml);
 
-		// This will FAIL because once we enter scanners context,
-		// we never exit it, so dependencies gets added to result
-		// instead of staying in scanners
-		console.log("Result:", JSON.stringify(result, null, 2));
-
-		// Expected: {scanners: {secrets: true, dependencies: false}}
-		// Actual: {scanners: {secrets: true}, dependencies: false}
 		assert.ok(result.scanners && typeof result.scanners === "object");
-		// Note: This assertion will fail - documenting the bug
-		// assert.strictEqual((result.scanners as any).dependencies, false);
+		const scanners = result.scanners as Record<string, unknown>;
+		assert.strictEqual(scanners.secrets, true);
+		assert.strictEqual(scanners.dependencies, false);
 	});
 
-	it.skip("FAIL: should handle multiple nested sections", () => {
+	it("should handle multiple nested sections", () => {
 		const yaml = `
 scanners:
   secrets: true
@@ -131,55 +39,58 @@ output:
   verbose: false
 		`;
 		const result = parseYaml(yaml);
-		console.log("Result:", JSON.stringify(result, null, 2));
 
-		// Expected: {scanners: {secrets: true}, output: {verbose: false}}
-		// Actual: {scanners: {secrets: true, output: {verbose: false}}}
-		// The 'output' key gets added to scanners object!
-		assert.ok(result.output, "output should be at top level");
+		assert.ok(result.scanners, "scanners should exist at top level");
+		assert.ok(result.output, "output should exist at top level");
+		const scanners = result.scanners as Record<string, unknown>;
+		const output = result.output as Record<string, unknown>;
+		assert.strictEqual(scanners.secrets, true);
+		assert.strictEqual(output.verbose, false);
 	});
 
-	it.skip("FAIL: should parse top-level arrays", () => {
+	it("should parse top-level arrays", () => {
 		const yaml = `
 ignore:
   - node_modules
   - dist
 		`;
 		const result = parseYaml(yaml);
-		console.log("Result:", JSON.stringify(result, null, 2));
 
-		// Expected: {ignore: ["node_modules", "dist"]}
-		// Actual: {ignore: undefined} or malformed
-		// The parser requires currentNested to be set, which isn't true for top-level
 		assert.ok(Array.isArray(result.ignore), "ignore should be an array");
+		const ignore = result.ignore as string[];
+		assert.strictEqual(ignore.length, 2);
+		assert.strictEqual(ignore[0], "node_modules");
+		assert.strictEqual(ignore[1], "dist");
 	});
 
-	it.skip("FAIL: should parse array items with proper types", () => {
+	it("should parse array items with proper types", () => {
 		const yaml = `
-scanners:
-  secrets: true
-  verbose: false
+values:
+  - 123
+  - true
+  - hello
 		`;
 		const result = parseYaml(yaml);
-		console.log("Result:", JSON.stringify(result, null, 2));
 
-		// If we force array context, booleans become strings!
-		// Because array items use .push(value) without parseValue()
+		assert.ok(Array.isArray(result.values), "values should be an array");
+		const values = result.values as unknown[];
+		assert.strictEqual(values[0], 123);
+		assert.strictEqual(values[1], true);
+		assert.strictEqual(values[2], "hello");
 	});
 
-	it.skip("FAIL: should handle colons in unquoted values", () => {
+	it("should handle colons in unquoted values", () => {
 		const yaml = `
 time: 10:30
+url: https://example.com
 		`;
 		const result = parseYaml(yaml);
-		console.log("Result:", JSON.stringify(result, null, 2));
 
-		// Expected: {time: "10:30"}
-		// Actual: {time: {30: null}} or similar
 		assert.strictEqual(result.time, "10:30");
+		assert.strictEqual(result.url, "https://example.com");
 	});
 
-	it.skip("FAIL: should parse the real .redwoodrc.yaml.example", () => {
+	it("should parse the real .redwoodrc.yaml.example", () => {
 		const yaml = `
 severity: high
 
@@ -196,19 +107,98 @@ output:
   verbose: false
 		`;
 		const result = parseYaml(yaml);
-		console.log("\n=== REAL CONFIG PARSING RESULT ===");
-		console.log(JSON.stringify(result, null, 2));
-		console.log("=================================\n");
 
-		// This will demonstrate multiple failures:
-		// 1. 'ignore' array won't work (top-level array issue)
-		// 2. 'output' will be nested inside 'scanners' (nested exit issue)
-		// 3. Array items won't be type-parsed
-
-		// These assertions will ALL fail:
 		assert.strictEqual(result.severity, "high");
+
 		assert.ok(Array.isArray(result.ignore), "ignore should be array");
-		assert.strictEqual((result.scanners as any).secrets, true);
-		assert.ok(result.output, "output should be at top level");
+		const ignore = result.ignore as string[];
+		assert.strictEqual(ignore.length, 2);
+		assert.strictEqual(ignore[0], "**/node_modules/**");
+		assert.strictEqual(ignore[1], "**/dist/**");
+
+		assert.ok(result.scanners, "scanners should exist");
+		const scanners = result.scanners as Record<string, unknown>;
+		assert.strictEqual(scanners.secrets, true);
+		assert.strictEqual(scanners.dependencies, true);
+
+		assert.ok(result.output, "output should exist at top level");
+		const output = result.output as Record<string, unknown>;
+		assert.strictEqual(output.json, false);
+		assert.strictEqual(output.verbose, false);
+	});
+
+	it("should handle deeply nested structures", () => {
+		const yaml = `
+level1:
+  level2:
+    level3: deep
+		`;
+		const result = parseYaml(yaml);
+
+		assert.ok(result.level1, "level1 should exist");
+		const level1 = result.level1 as Record<string, unknown>;
+		assert.ok(level1.level2, "level2 should exist");
+		const level2 = level1.level2 as Record<string, unknown>;
+		assert.strictEqual(level2.level3, "deep");
+	});
+
+	it("should handle quoted strings", () => {
+		const yaml = `
+single: 'hello world'
+double: "foo bar"
+		`;
+		const result = parseYaml(yaml);
+
+		assert.strictEqual(result.single, "hello world");
+		assert.strictEqual(result.double, "foo bar");
+	});
+
+	it("should handle comments", () => {
+		const yaml = `
+# This is a comment
+key: value # inline comment not supported, included in value
+# Another comment
+other: stuff
+		`;
+		const result = parseYaml(yaml);
+
+		assert.ok(result.key);
+		assert.strictEqual(result.other, "stuff");
+	});
+});
+
+describe("parseValue", () => {
+	it("should parse booleans", () => {
+		assert.strictEqual(parseValue("true"), true);
+		assert.strictEqual(parseValue("false"), false);
+		assert.strictEqual(parseValue("TRUE"), true);
+		assert.strictEqual(parseValue("FALSE"), false);
+	});
+
+	it("should parse null", () => {
+		assert.strictEqual(parseValue("null"), null);
+		assert.strictEqual(parseValue("~"), null);
+		assert.strictEqual(parseValue(""), null);
+	});
+
+	it("should parse integers", () => {
+		assert.strictEqual(parseValue("42"), 42);
+		assert.strictEqual(parseValue("-10"), -10);
+		assert.strictEqual(parseValue("0"), 0);
+	});
+
+	it("should parse floats", () => {
+		assert.strictEqual(parseValue("3.14"), 3.14);
+		assert.strictEqual(parseValue("-2.5"), -2.5);
+	});
+
+	it("should parse quoted strings", () => {
+		assert.strictEqual(parseValue('"hello"'), "hello");
+		assert.strictEqual(parseValue("'world'"), "world");
+	});
+
+	it("should return plain strings as-is", () => {
+		assert.strictEqual(parseValue("hello"), "hello");
+		assert.strictEqual(parseValue("10:30"), "10:30");
 	});
 });
