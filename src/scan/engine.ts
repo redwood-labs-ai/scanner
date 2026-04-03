@@ -19,6 +19,8 @@ export interface Issue {
 
 export interface ScanOptions {
 	verbose?: boolean;
+	/** Suppress progress output (for JSON/SARIF modes) */
+	quiet?: boolean;
 	severity?: "critical" | "high" | "medium" | "low";
 	bypassIgnore?: boolean;
 	config?: RedwoodConfig;
@@ -68,7 +70,7 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 			console.log(ansi.cyan(`  🔗 Validating agent orchestration chains...`));
 		}
 		try {
-			chainIssues = await validateAgentChain(repoPath);
+			chainIssues = await validateAgentChain(repoPath, { quiet: options.quiet });
 			if (chainIssues.length > 0 && options.verbose) {
 				console.log(ansi.dim(`  Chain validation: ${chainIssues.length} issue(s)`));
 			}

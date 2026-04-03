@@ -594,18 +594,28 @@ function isIsolatedAgent(node: AgentNode, edges: Edge[]): boolean {
 	return !hasOutgoing;
 }
 
+export interface AgentChainOptions {
+	/** Suppress progress output (for JSON/SARIF modes) */
+	quiet?: boolean;
+}
+
 /**
  * Main entry point for agent chain validation
  */
-export async function validateAgentChain(repoPath: string): Promise<Issue[]> {
-	console.log("🔍 Building orchestration graph...");
+export async function validateAgentChain(
+	repoPath: string,
+	options: AgentChainOptions = {}
+): Promise<Issue[]> {
+	const log = options.quiet ? () => {} : console.log.bind(console);
+
+	log("🔍 Building orchestration graph...");
 	const graph = await buildOrchestrationGraph(repoPath);
 
 	if (graph.nodes.length === 0) {
 		return [];
 	}
 
-	console.log(`   Found ${graph.nodes.length} agent(s)`);
+	log(`   Found ${graph.nodes.length} agent(s)`);
 
 	// Build edge map for node lookups
 	const edgeMap: Record<string, Edge[]> = {};
@@ -614,19 +624,19 @@ export async function validateAgentChain(repoPath: string): Promise<Issue[]> {
 		edgeMap[edge.from].push(edge);
 	});
 
-	console.log("🔍 Analyzing handoff patterns...");
+	log("🔍 Analyzing handoff patterns...");
 	const handoffIssues = analyzeHandoffs(graph);
 
-	console.log("🔍 Validating tool chains...");
+	log("🔍 Validating tool chains...");
 	const toolIssues = validateToolsInChain(graph);
 
-	console.log("🔍 Detecting circular dependencies...");
+	log("🔍 Detecting circular dependencies...");
 	const cycleIssues = detectCycles(graph);
 
-	console.log("🔍 Auditing context propagation...");
+	log("🔍 Auditing context propagation...");
 	const contextIssues = auditContextPropagation(graph);
 
-	console.log("🔍 Validating tool data flows...");
+	log("🔍 Validating tool data flows...");
 	const dataFlowIssues = validateToolChains(graph);
 
 	// Combine all issues with unique IDs

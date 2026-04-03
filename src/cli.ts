@@ -11,7 +11,7 @@ import { validateAgentChain } from "./scan/agent-chain-validator.js";
 import { loadConfig, loadConfigFromPath } from "./scan/config.js";
 import { type Issue, scan } from "./scan/engine.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.3.1";
 
 // Helper functions
 
@@ -237,8 +237,13 @@ async function runScan(
 
 		const bypassIgnore = options["bypass-ignore"] === true;
 
+		// Determine output format early (needed for quiet mode)
+		const useJson = jsonVal === true || config.output?.json;
+		const useSarif = sarifVal === true || config.output?.sarif;
+
 		const issues = await scan(repoPath, {
 			verbose,
+			quiet: useJson || useSarif, // Suppress progress output for machine-readable formats
 			severity: (typeof severityVal === "string"
 				? severityVal
 				: config.severity === "info"
@@ -247,10 +252,6 @@ async function runScan(
 			bypassIgnore,
 			config,
 		});
-
-		// Determine output format
-		const useJson = jsonVal === true || config.output?.json;
-		const useSarif = sarifVal === true || config.output?.sarif;
 		const effectiveSeverity =
 			typeof severityVal === "string" ? severityVal : config.severity || "critical";
 
@@ -284,10 +285,15 @@ async function runAgents(
 	options: Record<string, string | boolean | (string | boolean)[] | undefined>
 ) {
 	try {
-		console.log(ansi.dim("Analyzing agent orchestration..."));
-		const issues = await validateAgentChain(repoPath);
+		const useJson = options.json === true;
 
-		if (options.json === true) {
+		if (!useJson) {
+			console.log(ansi.dim("Analyzing agent orchestration..."));
+		}
+
+		const issues = await validateAgentChain(repoPath, { quiet: useJson });
+
+		if (useJson) {
 			console.log(JSON.stringify(issues, null, 2));
 		} else {
 			printResults(issues);
