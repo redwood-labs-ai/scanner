@@ -92,4 +92,13 @@ export default definePatterns([
 		fix: "Disable external entity processing in XML parser",
 		fileTypes: [".py"],
 	},
+	{
+		name: "Command injection via webbrowser.open (CVE-2026-4519)",
+		regex: /webbrowser\.open\s*\(|webbrowser\.get\.open\s*\(|webbrowser\.control\s*\(/g,
+		severity: "high",
+		message:
+			"webbrowser.open() with user-controlled URLs is vulnerable to command injection. URLs starting with dashes can be interpreted as command-line options to the browser",
+		fix: "Validate URLs before passing to webbrowser.open(). Reject URLs starting with dashes. Ensure URL has valid http/https scheme. Consider using a safer alternative for opening URLs",
+		fileTypes: [".py"],
+	},
 ]);

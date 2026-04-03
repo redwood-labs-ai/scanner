@@ -115,4 +115,34 @@ export default definePatterns([
 		message: "Debug mode may be enabled - ensure this is not deployed to production",
 		fix: "Use environment variables to control debug mode",
 	},
+	{
+		name: "Prototype pollution via convict (CVE-2026-33864)",
+		regex:
+			/convict\s*[(\s]|require\s*\(.*['"]convict['"]|from\s*['"]convict['"]|\.__proto__|constructor\s*\.\s*prototype|__defineGetter__|__lookupGetter__/gi,
+		severity: "critical",
+		message:
+			"convict configuration with prototype pollution vectors. The startsWith() function and schema initialization may pollute Object.prototype, leading to privilege escalation or DoS",
+		fix: "Upgrade convict to >=6.2.5. Sanitize configuration objects before passing to convict. Avoid configuration objects containing __proto__, constructor.prototype, or other prototype pollution vectors",
+		fileTypes: [".js", ".ts", ".mjs"],
+	},
+	{
+		name: "Prototype pollution via Object.assign",
+		regex:
+			/Object\.assign\s*\(.*\.\.\.|Object\.assign\s*\(undefined|Object\.assign\s*\(.*require\s*\(/gi,
+		severity: "high",
+		message:
+			"Object.assign with untrusted source may cause prototype pollution if source contains __proto__ or constructor keys",
+		fix: "Validate source objects and reject any containing __proto__, constructor, or prototype keys. Use Object.assign with sanitized inputs only",
+		fileTypes: [".js", ".ts", ".mjs"],
+	},
+	{
+		name: "Prototype pollution via spread operator",
+		regex:
+			/\{\s*\.\.\.JSON\.parse\s*\(|\{\s*\.\.\.req\.(body|query|params)\b|\{\s*\.\.\.(await\s+)?(fetch|axios|got|request)\s*\(/gi,
+		severity: "high",
+		message:
+			"Spreading parsed JSON or request data directly may propagate prototype pollution. Attacker-controlled __proto__ or constructor keys in the source will pollute the new object",
+		fix: "Sanitize objects before spreading: filter out __proto__, constructor, and prototype keys. Use a safe merge library or validate input schema before spreading",
+		fileTypes: [".js", ".ts", ".mjs"],
+	},
 ]);
