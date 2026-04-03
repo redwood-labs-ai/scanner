@@ -115,4 +115,34 @@ export default definePatterns([
 		message: "Debug mode may be enabled - ensure this is not deployed to production",
 		fix: "Use environment variables to control debug mode",
 	},
+	{
+		name: "Prototype pollution via convict (CVE-2026-33864)",
+		regex:
+			/convict\s*[(\s]|require\s*\(.*['"]convict['"]|from\s*['"]convict['"]|\.__proto__|constructor\s*\.\s*prototype|__defineGetter__|__lookupGetter__/gi,
+		severity: "critical",
+		message:
+			"convict configuration with prototype pollution vectors. The startsWith() function and schema initialization may pollute Object.prototype, leading to privilege escalation or DoS",
+		fix: "Upgrade convict to >=6.2.5. Sanitize configuration objects before passing to convict. Avoid configuration objects containing __proto__, constructor.prototype, or other prototype pollution vectors",
+		fileTypes: [".js", ".ts", ".mjs"],
+	},
+	{
+		name: "Prototype pollution via Object.assign",
+		regex:
+			/Object\.assign\s*\(.*\.\.\.|Object\.assign\s*\(undefined|Object\.assign\s*\(.*require\s*\(/gi,
+		severity: "high",
+		message:
+			"Object.assign with untrusted source may cause prototype pollution if source contains __proto__ or constructor keys",
+		fix: "Validate source objects and reject any containing __proto__, constructor, or prototype keys. Use Object.assign with sanitized inputs only",
+		fileTypes: [".js", ".ts", ".mjs"],
+	},
+	{
+		name: "Prototype pollution via spread operator",
+		regex:
+			/\{(\s*\.\.\.)?\s*(config|data|input|payload|body|request|req|options|params|args)[\s\S]{0,50}\}/gi,
+		severity: "high",
+		message:
+			"Spread operator with untrusted object may propagate prototype pollution to new objects",
+		fix: "Sanitize objects before spreading. Use Object.assign({}, obj) instead of {...obj} with untrusted input, or validate that input doesn't contain prototype keys",
+		fileTypes: [".js", ".ts", ".mjs"],
+	},
 ]);

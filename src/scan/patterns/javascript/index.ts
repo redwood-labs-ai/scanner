@@ -92,4 +92,22 @@ export default definePatterns([
 		fix: "Upgrade path-to-regexp to >=8.4.0. Avoid patterns with multiple sequential optional groups. Use explicit path parameters instead of multiple optional segments",
 		fileTypes: [".js", ".ts", ".mjs"],
 	},
+	{
+		name: "path-to-regexp multiple wildcards ReDoS (CVE-2026-4923)",
+		regex: /\*[^:]*[^-]*-[^:]*:[^/]+-|\*[^/]*-:[^/]*-[^/]*\*|\*[^/]*:[^/]*-[^/]*\*/g,
+		severity: "high",
+		message:
+			"path-to-regexp with multiple wildcards combined with parameters can cause ReDoS. Pattern with multiple * wildcards and parameters (like '/*foo-*bar-:baz') causes catastrophic backtracking",
+		fix: "Upgrade path-to-regexp to >=8.4.0. Avoid patterns with multiple wildcards combined with parameters. Restructure routes to use simpler patterns",
+		fileTypes: [".js", ".ts", ".mjs"],
+	},
+	{
+		name: "path-to-regexp multi-param segments ReDoS (CVE-2026-4867)",
+		regex: /:[^-/]+-:[^/.-]+-:[^/.-]+|:[^/]+-:[^/.-]+-:[^/.-]+-:[^/.-]+/g,
+		severity: "high",
+		message:
+			"path-to-regexp with 3+ parameters in a single segment (like '/:a-:b-:c') can cause ReDoS. Overlapping capture groups cause catastrophic backtracking",
+		fix: "Upgrade path-to-regexp to >=0.1.13. Avoid segments with 3+ parameters separated by non-dot characters. Split into separate path segments instead",
+		fileTypes: [".js", ".ts", ".mjs"],
+	},
 ]);
