@@ -329,6 +329,7 @@ async function main() {
 			command === "scan"
 				? {
 						args: args.slice(1),
+						allowPositionals: true,
 						options: {
 							config: { type: "string" },
 							json: { type: "boolean" },
@@ -341,6 +342,7 @@ async function main() {
 					}
 				: {
 						args: args.slice(1),
+						allowPositionals: true,
 						options: {
 							json: { type: "boolean" },
 							help: { type: "boolean" },
