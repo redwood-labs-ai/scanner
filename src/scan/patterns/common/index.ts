@@ -138,11 +138,11 @@ export default definePatterns([
 	{
 		name: "Prototype pollution via spread operator",
 		regex:
-			/\{(\s*\.\.\.)?\s*(config|data|input|payload|body|request|req|options|params|args)[\s\S]{0,50}\}/gi,
+			/\{\s*\.\.\.JSON\.parse\s*\(|\{\s*\.\.\.req\.(body|query|params)\b|\{\s*\.\.\.(await\s+)?(fetch|axios|got|request)\s*\(/gi,
 		severity: "high",
 		message:
-			"Spread operator with untrusted object may propagate prototype pollution to new objects",
-		fix: "Sanitize objects before spreading. Use Object.assign({}, obj) instead of {...obj} with untrusted input, or validate that input doesn't contain prototype keys",
+			"Spreading parsed JSON or request data directly may propagate prototype pollution. Attacker-controlled __proto__ or constructor keys in the source will pollute the new object",
+		fix: "Sanitize objects before spreading: filter out __proto__, constructor, and prototype keys. Use a safe merge library or validate input schema before spreading",
 		fileTypes: [".js", ".ts", ".mjs"],
 	},
 ]);
