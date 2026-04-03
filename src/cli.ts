@@ -7,11 +7,12 @@
 
 import { parseArgs } from "node:util";
 import { ansi } from "./ansi.js";
+import { generatePrompt } from "./prompt.js";
 import { validateAgentChain } from "./scan/agent-chain-validator.js";
 import { loadConfig, loadConfigFromPath } from "./scan/config.js";
 import { type Issue, scan } from "./scan/engine.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.4.0";
 
 // Helper functions
 
@@ -167,6 +168,7 @@ ${ansi.bold("Options:")}
   --verbose          Show detailed output
   --bypass-ignore    Critical mode: include bypassed findings as issues
   --severity <level> Minimum severity to fail on (critical|high|medium|low)
+  --no-prompt        Suppress LLM fix prompt (for CI/scripted use)
   --help             Show this help message
 `);
 	} else if (command === "agents" || command === "agent-chain") {
@@ -180,8 +182,9 @@ ${ansi.bold("Positional:")}
   <path>    Path to repository
 
 ${ansi.bold("Options:")}
-  --json    Output results as JSON
-  --help    Show this help message
+  --json       Output results as JSON
+  --no-prompt  Suppress LLM fix prompt (for CI/scripted use)
+  --help       Show this help message
 `);
 	} else {
 		console.log(`
@@ -237,8 +240,13 @@ async function runScan(
 
 		const bypassIgnore = options["bypass-ignore"] === true;
 
+		// Determine output format early (needed for quiet mode)
+		const useJson = jsonVal === true || config.output?.json;
+		const useSarif = sarifVal === true || config.output?.sarif;
+
 		const issues = await scan(repoPath, {
 			verbose,
+			quiet: useJson || useSarif, // Suppress progress output for machine-readable formats
 			severity: (typeof severityVal === "string"
 				? severityVal
 				: config.severity === "info"
@@ -247,10 +255,6 @@ async function runScan(
 			bypassIgnore,
 			config,
 		});
-
-		// Determine output format
-		const useJson = jsonVal === true || config.output?.json;
-		const useSarif = sarifVal === true || config.output?.sarif;
 		const effectiveSeverity =
 			typeof severityVal === "string" ? severityVal : config.severity || "critical";
 
@@ -268,6 +272,19 @@ async function runScan(
 
 		printResults(issues);
 
+		// Generate LLM prompt (on by default, suppressed with --no-prompt)
+		const showPrompt = options["no-prompt"] !== true;
+		if (showPrompt && issues.length > 0) {
+			const prompt = generatePrompt(issues);
+			if (prompt) {
+				console.log("─".repeat(50));
+				console.log(ansi.bold("📋 Copy for your AI assistant:"));
+				console.log("─".repeat(50));
+				console.log("");
+				console.log(prompt);
+			}
+		}
+
 		// Exit with error if issues meet severity threshold
 		const shouldFail = issues.some((i) => meetsSeverityThreshold(i.severity, effectiveSeverity));
 		if (shouldFail) {
@@ -284,13 +301,31 @@ async function runAgents(
 	options: Record<string, string | boolean | (string | boolean)[] | undefined>
 ) {
 	try {
-		console.log(ansi.dim("Analyzing agent orchestration..."));
-		const issues = await validateAgentChain(repoPath);
+		const useJson = options.json === true;
 
-		if (options.json === true) {
+		if (!useJson) {
+			console.log(ansi.dim("Analyzing agent orchestration..."));
+		}
+
+		const issues = await validateAgentChain(repoPath, { quiet: useJson });
+
+		if (useJson) {
 			console.log(JSON.stringify(issues, null, 2));
 		} else {
 			printResults(issues);
+
+			// Generate LLM prompt (on by default, suppressed with --no-prompt)
+			const showPrompt = options["no-prompt"] !== true;
+			if (showPrompt && issues.length > 0) {
+				const prompt = generatePrompt(issues);
+				if (prompt) {
+					console.log("─".repeat(50));
+					console.log(ansi.bold("📋 Copy for your AI assistant:"));
+					console.log("─".repeat(50));
+					console.log("");
+					console.log(prompt);
+				}
+			}
 		}
 
 		if (issues.some((i) => i.severity === "critical")) {
@@ -305,13 +340,13 @@ async function runAgents(
 async function main() {
 	const args = process.argv.slice(2);
 
-	// Handle --version and --help at top level
-	if (args.includes("--version") || (args.length === 1 && args[0] === "-v")) {
+	// Handle --version and --help at top level (only if first arg)
+	if (args[0] === "--version" || args[0] === "-v") {
 		console.log(VERSION);
 		process.exit(0);
 	}
 
-	if (args.includes("--help") || (args.length === 1 && args[0] === "-h")) {
+	if (args[0] === "--help" || args[0] === "-h") {
 		printHelp();
 		process.exit(0);
 	}
@@ -337,6 +372,7 @@ async function main() {
 							verbose: { type: "boolean" },
 							"bypass-ignore": { type: "boolean" },
 							severity: { type: "string" },
+							"no-prompt": { type: "boolean" },
 							help: { type: "boolean" },
 						},
 					}
@@ -345,6 +381,7 @@ async function main() {
 						allowPositionals: true,
 						options: {
 							json: { type: "boolean" },
+							"no-prompt": { type: "boolean" },
 							help: { type: "boolean" },
 						},
 					};

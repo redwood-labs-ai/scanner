@@ -51,6 +51,16 @@ export default definePatterns([
 		fileTypes: [".go"],
 	},
 	{
+		name: "Go path.Join without sanitization (CVE-2026-33528)",
+		regex:
+			/filepath\.Join\s*\(\s*\w+\s*,\s*\w+\s*\)|filepath\.Join\s*\(\s*["'][^"']*["']\s*,\s*[a-zA-Z_]/g,
+		severity: "high",
+		message:
+			"path.Join with unsanitized input allows path traversal. Similar to CVE-2026-33528 in GoDoxy where user-controlled filename parameter bypassed directory restrictions",
+		fix: "Validate and sanitize path input before using path.Join. Use filepath.Clean(), then verify the result starts with the base directory. Consider using path/filepath.EvalSymlinks for additional safety",
+		fileTypes: [".go"],
+	},
+	{
 		name: "Go SSRF",
 		regex: /http\.(Get|Post|Head)\s*\([^"'`]|http\.NewRequest\s*\([^)]*\+/g,
 		severity: "high",
