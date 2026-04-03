@@ -1,0 +1,82 @@
+$ redwood scan ./my-agent-project
+
+🔍 Building orchestration graph...
+   Found 3 agent(s)
+🔍 Analyzing handoff patterns...
+🔍 Validating tool chains...
+🔍 Detecting circular dependencies...
+🔍 Auditing context propagation...
+🔍 Validating tool data flows...
+
+──────────────────────────────────────────────────
+Found 5 issue(s):
+──────────────────────────────────────────────────
+
+🔴 SQL template literal injection (2)
+   SQL query built with template literal is vulnerable to injection
+   Fix: Use parameterized queries with prepared statements
+   Files:
+   - src/db/queries.ts:42
+   - src/db/queries.ts:87
+
+🟠 Hardcoded API key (1)
+   API key exposed in source code
+   Fix: Move to environment variable
+   Files:
+   - src/config.ts:15
+
+🟠 exec() usage (1)
+   exec() can execute arbitrary shell commands
+   Fix: Use parameterized commands or escape user input properly
+   Files:
+   - src/tools/shell.ts:23
+
+🟡 MCP: Dangerous Tool Name (1)
+   Tool "execute_code" has a name suggesting dangerous capabilities
+   Fix: Ensure this tool has proper authorization and input validation
+   Files:
+   - mcp.json
+
+──────────────────────────────────────────────────
+Summary
+──────────────────────────────────────────────────
+🔴 Critical: 2
+🟠 High: 2
+🟡 Medium: 1
+
+──────────────────────────────────────────────────
+📋 Copy for your AI assistant:
+──────────────────────────────────────────────────
+
+Please fix the following security issues in my codebase:
+
+1. SQL template literal injection
+   File: src/db/queries.ts, Line 42
+   Problem: SQL query built with template literal is vulnerable to injection
+   Current code: `SELECT * FROM users WHERE id = ${userId}`
+   Required fix: Use parameterized queries with prepared statements
+
+2. SQL template literal injection
+   File: src/db/queries.ts, Line 87
+   Problem: SQL query built with template literal is vulnerable to injection
+   Current code: `DELETE FROM sessions WHERE token = ${token}`
+   Required fix: Use parameterized queries with prepared statements
+
+3. Hardcoded API key
+   File: src/config.ts, Line 15
+   Problem: API key exposed in source code
+   Current code: const API_KEY = "sk-live-abc123"
+   Required fix: Move to environment variable
+
+4. exec() usage
+   File: src/tools/shell.ts, Line 23
+   Problem: exec() can execute arbitrary shell commands
+   Current code: exec(`ls ${userPath}`)
+   Required fix: Use parameterized commands or escape user input properly
+
+5. MCP: Dangerous Tool Name
+   File: mcp.json
+   Problem: Tool "execute_code" has a name suggesting dangerous capabilities
+   Required fix: Ensure this tool has proper authorization and input validation
+
+For each issue, show me the exact code change needed.

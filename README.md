@@ -49,6 +49,9 @@ redwood scan ./my-repo --json
 
 # SARIF format (for GitHub/GitLab integration)
 redwood scan ./my-repo --sarif > results.sarif
+
+# Suppress LLM prompt (for CI/scripted use)
+redwood scan ./my-repo --no-prompt
 ```
 
 ### Severity Threshold
@@ -232,6 +235,45 @@ Supported comment styles:
 | **MCP** | Dangerous tools, missing validation |
 | **Dependencies** | Known CVEs, outdated packages |
 | **Agent Chains** | Privilege escalation, context leaks |
+
+## AI-Assisted Fixing
+
+By default, redwood outputs an **LLM-ready prompt** after scan results. Copy it directly to Claude, ChatGPT, Cursor, or any AI assistant to fix issues:
+
+```
+──────────────────────────────────────────────────
+📋 Copy for your AI assistant:
+──────────────────────────────────────────────────
+
+Please fix the following security issues in my codebase:
+
+1. SQL template literal injection
+   File: src/db/queries.ts, Line 42
+   Problem: SQL query built with template literal is vulnerable to injection
+   Current code: `SELECT * FROM users WHERE id = ${userId}`
+   Required fix: Use parameterized queries with prepared statements
+
+2. Hardcoded API key
+   File: src/config.ts, Line 15
+   Problem: API key exposed in source code
+   Current code: const API_KEY = "sk-live-..."
+   Required fix: Move to environment variable
+
+For each issue, show me the exact code change needed.
+```
+
+### Prompt Behavior
+
+| Output Mode | Prompt Included? |
+|-------------|------------------|
+| Terminal (default) | ✅ Yes |
+| `--json` | ❌ No |
+| `--sarif` | ❌ No |
+| `--no-prompt` | ❌ No |
+
+When there are **more than 20 issues**, the prompt automatically groups them by type to keep it readable.
+
+**Note:** Bypassed issues (via `// redwood-ignore`) are excluded from the prompt — only actionable findings are included.
 
 ## Known Limitations
 
