@@ -55,4 +55,14 @@ export default definePatterns([
 		fix: "Use bridge networking with explicit port mappings",
 		fileTypes: [".yml", ".yaml"],
 	},
+	{
+		name: "MCP config command injection (CVE-2026-21518)",
+		regex:
+			/\b(?:mcpServers|servers)\b[\s\S]{0,500}?["'](?:command|args)["']\s*:\s*\[[\s\S]{0,500}?(?:\$\(|`|&&|\|\||;|\|)[\s\S]{0,200}?\]/gi,
+		severity: "high",
+		message:
+			"MCP server config contains shell metacharacters in command/args; may enable command injection if executed via a shell",
+		fix: "Avoid shell execution for MCP server commands. Pass executable + args as a safe array, disallow shell metacharacters, and prefer allowlisted binaries/paths.",
+		fileTypes: [".json"],
+	},
 ]);
