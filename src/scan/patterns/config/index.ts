@@ -107,7 +107,8 @@ export default definePatterns([
 	},
 	{
 		name: "GitHub Actions mutable tag usage (CVE-2026-33634)",
-		regex: /uses:\s*[a-z0-9_./-]+\s+@v\d+(\.\d+)*/gi,
+		// Typical syntax is: uses: owner/repo@v2 (no space before @)
+		regex: /uses:\s*[a-z0-9_./-]+@v\d+(\.\d+)*/gi,
 		severity: "high",
 		message:
 			"GitHub Action using mutable version tag (e.g., @v2, @v3.0). Mutable tags can be updated by action maintainers, enabling supply chain attacks as seen in CVE-2026-33634 (Trivy GitHub Action compromise)",

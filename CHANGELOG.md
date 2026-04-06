@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-04-06
+
+### Added
+
+- **4 New Security Patterns**
+  - Unsafe `yaml.load()` usage (CVE-2026-24009 / Docling RCE class) — critical
+  - Unsafe `tarfile.extractall()` extraction heuristic (CVE-2026-27905 class) — high
+  - AWS IMDS access (169.254.169.254) — high
+  - GitHub Actions mutable tag usage (CVE-2026-33634 / Trivy action compromise class) — high
+
+### Fixed
+
+- GitHub Actions mutable tag detector now matches the common `uses: owner/repo@v2` syntax
+
+### Stats
+
+- **79 patterns** across JS, TS, Python, Go, Ruby, PHP, Rust
+
 ## [0.4.0] - 2026-04-03
 
 ### Added
