@@ -101,4 +101,22 @@ export default definePatterns([
 		fix: "Validate URLs before passing to webbrowser.open(). Reject URLs starting with dashes. Ensure URL has valid http/https scheme. Consider using a safer alternative for opening URLs",
 		fileTypes: [".py"],
 	},
+	{
+		name: "tarfile.extractall() unsafe extraction (CVE-2026-27905 class)",
+		regex: /tarfile\..*extractall\s*\(|TarFile.*extractall\s*\(|tar\.extractall\s*\(/g,
+		severity: "high",
+		message:
+			"tarfile.extractall() with untrusted archives can lead to path traversal and arbitrary file overwrite. Similar to CVE-2026-27905 in bentoml where malicious tar archives could extract files outside target directory",
+		fix: "Validate archive members before extraction. Use tarfile.extractall() with a custom filter='data' (Python 3.12+) or manually validate each member's name doesn't contain '..' or start with '/'. Consider using a safer extraction library",
+		fileTypes: [".py"],
+	},
+	{
+		name: "Unsafe yaml.load() usage (CVE-2026-24009 / Docling RCE)",
+		regex: /yaml\.load\s*\([^)]*\)|yaml\.unsafe_load\s*\(/g,
+		severity: "critical",
+		message:
+			"yaml.load() without safe Loader can execute arbitrary code. Similar to CVE-2026-24009 in Docling where yaml.load() was used without Loader parameter, allowing RCE via malicious YAML files",
+		fix: "Use yaml.safe_load() instead of yaml.load(). If Loader is specified, use yaml.SafeLoader. Never use yaml.load() with yaml.Loader or yaml.UnsafeLoader for untrusted input",
+		fileTypes: [".py"],
+	},
 ]);
