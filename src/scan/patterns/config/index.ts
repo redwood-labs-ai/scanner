@@ -65,4 +65,44 @@ export default definePatterns([
 		fix: "Avoid shell execution for MCP server commands. Pass executable + args as a safe array, disallow shell metacharacters, and prefer allowlisted binaries/paths.",
 		fileTypes: [".json"],
 	},
+	{
+		name: "MCP config uses shell wrapper (bash/sh/cmd/powershell)",
+		regex:
+			/\b(?:mcpServers|servers)\b[\s\S]{0,500}?["']command["']\s*:\s*["'](?:bash|sh|zsh|cmd(?:\.exe)?|powershell(?:\.exe)?)\b[\s\S]{0,200}?["']/gi,
+		severity: "high",
+		message:
+			"MCP server is configured to launch via a shell wrapper. This increases the risk of command injection and unexpected command parsing.",
+		fix: "Prefer executing a fixed allowlisted binary directly (no shell). If a shell is unavoidable, strictly validate/escape args and disallow dynamic user input.",
+		fileTypes: [".json"],
+	},
+	{
+		name: "MCP config uses shell execution flags (-c /c -Command)",
+		regex:
+			/\b(?:mcpServers|servers)\b[\s\S]{0,800}?["']args["']\s*:\s*\[[\s\S]{0,800}?["'](?:-c|\/c|-Command|-EncodedCommand)["'][\s\S]{0,200}?\]/gi,
+		severity: "high",
+		message:
+			"MCP server args include shell execution flags (-c, /c, -Command). Combined with dynamic strings this can enable RCE.",
+		fix: "Avoid shell execution flags. Execute the target binary directly and pass arguments as a safe array; consider allowlisting commands and rejecting metacharacters.",
+		fileTypes: [".json"],
+	},
+	{
+		name: "MCP config runs remote package executors (npx/bunx/deno run)",
+		regex:
+			/\b(?:mcpServers|servers)\b[\s\S]{0,500}?["']command["']\s*:\s*["'](?:npx|bunx|deno)["']/gi,
+		severity: "medium",
+		message:
+			"MCP server is launched via a package executor (npx/bunx/deno). This can pull and execute remote code and increases supply-chain risk.",
+		fix: "Pin exact versions/hashes and prefer installing dependencies ahead of time. Avoid dynamic installs at runtime; use allowlisted sources and integrity checks.",
+		fileTypes: [".json"],
+	},
+	{
+		name: "MCP config hardcodes secrets in env",
+		regex:
+			/\b(?:mcpServers|servers)\b[\s\S]{0,800}?["']env["']\s*:\s*\{[\s\S]{0,1200}?["'][A-Z0-9_]*(?:SECRET|TOKEN|KEY|PASSWORD|PASSWD)[A-Z0-9_]*["']\s*:\s*["'](?!\$\{)[^"']{6,}["'][\s\S]{0,200}?\}/gi,
+		severity: "critical",
+		message:
+			"MCP server config appears to hardcode secrets in an env block. This risks credential leakage and accidental commits.",
+		fix: "Remove hardcoded secrets from config. Reference environment variables or a secrets manager, and rotate any exposed keys.",
+		fileTypes: [".json"],
+	},
 ]);
