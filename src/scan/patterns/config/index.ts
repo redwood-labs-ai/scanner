@@ -55,4 +55,64 @@ export default definePatterns([
 		fix: "Use bridge networking with explicit port mappings",
 		fileTypes: [".yml", ".yaml"],
 	},
+	{
+		name: "MCP config command injection (CVE-2026-21518)",
+		regex:
+			/\b(?:mcpServers|servers)\b[\s\S]{0,500}?["'](?:command|args)["']\s*:\s*\[[\s\S]{0,500}?(?:\$\(|`|&&|\|\||;|\|)[\s\S]{0,200}?\]/gi,
+		severity: "high",
+		message:
+			"MCP server config contains shell metacharacters in command/args; may enable command injection if executed via a shell",
+		fix: "Avoid shell execution for MCP server commands. Pass executable + args as a safe array, disallow shell metacharacters, and prefer allowlisted binaries/paths.",
+		fileTypes: [".json"],
+	},
+	{
+		name: "MCP config uses shell wrapper (bash/sh/cmd/powershell)",
+		regex:
+			/\b(?:mcpServers|servers)\b[\s\S]{0,500}?["']command["']\s*:\s*["'](?:bash|sh|zsh|cmd(?:\.exe)?|powershell(?:\.exe)?)\b[\s\S]{0,200}?["']/gi,
+		severity: "high",
+		message:
+			"MCP server is configured to launch via a shell wrapper. This increases the risk of command injection and unexpected command parsing.",
+		fix: "Prefer executing a fixed allowlisted binary directly (no shell). If a shell is unavoidable, strictly validate/escape args and disallow dynamic user input.",
+		fileTypes: [".json"],
+	},
+	{
+		name: "MCP config uses shell execution flags (-c /c -Command)",
+		regex:
+			/\b(?:mcpServers|servers)\b[\s\S]{0,800}?["']args["']\s*:\s*\[[\s\S]{0,800}?["'](?:-c|\/c|-Command|-EncodedCommand)["'][\s\S]{0,200}?\]/gi,
+		severity: "high",
+		message:
+			"MCP server args include shell execution flags (-c, /c, -Command). Combined with dynamic strings this can enable RCE.",
+		fix: "Avoid shell execution flags. Execute the target binary directly and pass arguments as a safe array; consider allowlisting commands and rejecting metacharacters.",
+		fileTypes: [".json"],
+	},
+	{
+		name: "MCP config runs remote package executors (npx/bunx/deno run)",
+		regex:
+			/\b(?:mcpServers|servers)\b[\s\S]{0,500}?["']command["']\s*:\s*["'](?:npx|bunx|deno)["']/gi,
+		severity: "medium",
+		message:
+			"MCP server is launched via a package executor (npx/bunx/deno). This can pull and execute remote code and increases supply-chain risk.",
+		fix: "Pin exact versions/hashes and prefer installing dependencies ahead of time. Avoid dynamic installs at runtime; use allowlisted sources and integrity checks.",
+		fileTypes: [".json"],
+	},
+	{
+		name: "MCP config hardcodes secrets in env",
+		regex:
+			/\b(?:mcpServers|servers)\b[\s\S]{0,800}?["']env["']\s*:\s*\{[\s\S]{0,1200}?["'][A-Z0-9_]*(?:SECRET|TOKEN|KEY|PASSWORD|PASSWD)[A-Z0-9_]*["']\s*:\s*["'](?!\$\{)[^"']{6,}["'][\s\S]{0,200}?\}/gi,
+		severity: "critical",
+		message:
+			"MCP server config appears to hardcode secrets in an env block. This risks credential leakage and accidental commits.",
+		fix: "Remove hardcoded secrets from config. Reference environment variables or a secrets manager, and rotate any exposed keys.",
+		fileTypes: [".json"],
+	},
+	{
+		name: "GitHub Actions mutable tag usage (CVE-2026-33634)",
+		// Typical syntax is: uses: owner/repo@v2 (no space before @)
+		regex: /uses:\s*[a-z0-9_./-]+@v\d+(\.\d+)*/gi,
+		severity: "high",
+		message:
+			"GitHub Action using mutable version tag (e.g., @v2, @v3.0). Mutable tags can be updated by action maintainers, enabling supply chain attacks as seen in CVE-2026-33634 (Trivy GitHub Action compromise)",
+		fix: "Pin GitHub Actions to a specific commit SHA (40 character hash) instead of using version tags. Example: uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11",
+		fileTypes: [".yml", ".yaml"],
+	},
 ]);
