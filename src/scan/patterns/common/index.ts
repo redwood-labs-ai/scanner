@@ -145,4 +145,13 @@ export default definePatterns([
 		fix: "Sanitize objects before spreading: filter out __proto__, constructor, and prototype keys. Use a safe merge library or validate input schema before spreading",
 		fileTypes: [".js", ".ts", ".mjs"],
 	},
+	{
+		name: "AWS IMDS access (169.254.169.254)",
+		regex: /169\.254\.169\.254|imds\.amazonaws\.com/gi,
+		severity: "high",
+		message:
+			"Access to AWS Instance Metadata Service (IMDS) at 169.254.169.254. If used without IMDSv2 token requirements, this can lead to credential theft and AWS account compromise (as seen in Trivy supply chain attacks)",
+		fix: "Use IMDSv2 with required session tokens (X-aws-ec2-metadata-token header). Restrict network access to IMDS endpoint. Ensure code doesn't fetch metadata from arbitrary sources",
+		fileTypes: [".go", ".py", ".js", ".ts", ".java", ".rb"],
+	},
 ]);

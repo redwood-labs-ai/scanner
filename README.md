@@ -4,7 +4,7 @@ Security scanner for AI-native codebases. Catches vulnerabilities, dangerous pat
 
 ## Features
 
-- **Pattern Detection** — 81 known security patterns across JS, TS, Python, Rust, Go, Ruby, PHP
+- **Pattern Detection** — 79 known security patterns across JS, TS, Python, Rust, Go, Ruby, PHP
 - **Secret Scanning** — API keys, tokens, passwords, private keys
 - **MCP Security** — Validates MCP server configurations and tool chains
 - **Dependency Audit** — Checks for known vulnerabilities

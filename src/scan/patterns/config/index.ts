@@ -105,4 +105,14 @@ export default definePatterns([
 		fix: "Remove hardcoded secrets from config. Reference environment variables or a secrets manager, and rotate any exposed keys.",
 		fileTypes: [".json"],
 	},
+	{
+		name: "GitHub Actions mutable tag usage (CVE-2026-33634)",
+		// Typical syntax is: uses: owner/repo@v2 (no space before @)
+		regex: /uses:\s*[a-z0-9_./-]+@v\d+(\.\d+)*/gi,
+		severity: "high",
+		message:
+			"GitHub Action using mutable version tag (e.g., @v2, @v3.0). Mutable tags can be updated by action maintainers, enabling supply chain attacks as seen in CVE-2026-33634 (Trivy GitHub Action compromise)",
+		fix: "Pin GitHub Actions to a specific commit SHA (40 character hash) instead of using version tags. Example: uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11",
+		fileTypes: [".yml", ".yaml"],
+	},
 ]);
