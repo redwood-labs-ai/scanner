@@ -1,6 +1,6 @@
 {
 	"name": "@redwood-labs/scanner",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "Security scanner for AI-native codebases",
 	"type": "module",
 	"main": "./dist/index.js",
