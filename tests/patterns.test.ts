@@ -268,9 +268,7 @@ describe("Pattern Scanner", () => {
 		});
 
 		it("should detect MCP hardcoded env secrets", () => {
-			const p = DANGEROUS_PATTERNS.find(
-				(x) => x.name === "MCP config hardcodes secrets in env"
-			);
+			const p = DANGEROUS_PATTERNS.find((x) => x.name === "MCP config hardcodes secrets in env");
 			assert.ok(p, "Should have MCP hardcoded env secrets pattern");
 
 			const cfg = `{
