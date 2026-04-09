@@ -115,4 +115,24 @@ export default definePatterns([
 		fix: "Pin GitHub Actions to a specific commit SHA (40 character hash) instead of using version tags. Example: uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11",
 		fileTypes: [".yml", ".yaml"],
 	},
+	{
+		name: "Docker socket bind-mount (RED-132)",
+		regex:
+			/-\\s+\/var\/run\/docker\.sock[:\s]+\/var\/run\/docker\.sock|-\\s+\/var\/run\/docker\.sock|docker\.sock\\s*:\\s*docker\.sock|source:\\s*["']?\/var\/run\/docker\.sock["']?/gi,
+		severity: "critical",
+		message:
+			"Docker socket (/var/run/docker.sock) is mounted into the container. This grants full Docker Engine API access, allowing container escape and complete host compromise",
+		fix: "Never mount the Docker socket into containers. Use Docker-in-Docker (dind) with rootless Docker, gVisor, or Kata Containers for build environments. In Kubernetes, enforce Pod Security Standards to block host resource access",
+		fileTypes: [".yml", ".yaml", ".json"],
+	},
+	{
+		name: "Docker daemon TCP 2375 exposure (CVE-2025-9074)",
+		regex:
+			/tcp:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):2375|:2375[^0-9]|-H\\s+tcp:\/\/[^:]+:2375|DOCKER_HOST\\s*[=:]\\s*["']?tcp:\/\/[^:]+:2375/gi,
+		severity: "critical",
+		message:
+			"Docker daemon exposed on TCP port 2375 without TLS/authentication. As seen in CVE-2025-9074, this allows unauthenticated access to the Docker Engine API, enabling remote code execution and host compromise",
+		fix: "Disable unauthenticated Docker API exposure. Use TLS certificates for remote API access. Restrict network access to port 2375 via firewall rules. Update Docker Desktop to version 4.44.3+ which fixes CVE-2025-9074",
+		fileTypes: [".yml", ".yaml", ".json", ".env", ".sh", ".conf"],
+	},
 ]);
