@@ -51,6 +51,76 @@ export default definePatterns([
 		fileTypes: [".rb"],
 	},
 	{
+		name: "Ruby/Rails render inline/file/template from request params",
+		regex: /\brender\s*\(?\s*(inline|file|template):\s*(params|request\.params|cookies|session)\b/g,
+		severity: "critical",
+		message:
+			"Rendering templates directly from request-derived input can enable template injection or path traversal",
+		fix: "Never render inline/file/template from user input. Use a strict allowlist of template names/paths.",
+		fileTypes: [".rb"],
+	},
+	{
+		name: "Ruby/Rails SQL injection via dynamic ORDER/GROUP/HAVING",
+		regex: /\.(order|reorder|group|having)\(\s*(params|request\.params|cookies|session)\b/g,
+		severity: "high",
+		message:
+			"ActiveRecord order/group/having with request-derived input can allow SQL injection via SQL fragments",
+		fix: "Use a strict allowlist for sort/group fields; prefer hash-style order().",
+		fileTypes: [".rb"],
+	},
+	{
+		name: "Ruby/Rails Arel.sql with request-derived input",
+		regex: /Arel\.sql\(\s*(params|request\.params|cookies|session)\b/g,
+		severity: "high",
+		message: "Arel.sql disables sanitization; request-derived input here can become raw SQL",
+		fix: "Only use Arel.sql with constant strings or allowlisted values.",
+		fileTypes: [".rb"],
+	},
+	{
+		name: "Ruby unsafe Marshal deserialization",
+		regex: /\bMarshal\.(load|restore)\s*\(/g,
+		severity: "critical",
+		message:
+			"Marshal.load/restore on untrusted data can lead to remote code execution via unsafe deserialization",
+		fix: "Avoid Marshal for untrusted inputs; use JSON and validate schema.",
+		fileTypes: [".rb"],
+	},
+	{
+		name: "Ruby SSRF via URI.open/open-uri with request-derived URL",
+		regex: /\b(URI\.open|OpenURI\.open_uri)\(\s*(params|request\.params|cookies|session)\b/g,
+		severity: "high",
+		message:
+			"Fetching a URL from request-derived input can enable SSRF to internal services/metadata endpoints",
+		fix: "Whitelist allowed hosts/schemes; block private IPs and link-local ranges.",
+		fileTypes: [".rb"],
+	},
+	{
+		name: "Ruby SSRF via Net::HTTP + URI(params)",
+		regex: /Net::HTTP\.(get|get_response|start)\s*\(\s*URI\(\s*(params|request\.params)\b/g,
+		severity: "high",
+		message: "Net::HTTP requests built from request-derived URLs can enable SSRF",
+		fix: "Whitelist allowed hosts/schemes; block private IPs and link-local ranges.",
+		fileTypes: [".rb"],
+	},
+	{
+		name: "Ruby open redirect",
+		regex: /\bredirect_to\s*\(?\s*(params|request\.params|request\.(referer|referrer))\b/g,
+		severity: "medium",
+		message: "Redirecting to request-derived URLs can enable open redirect attacks",
+		fix: "Validate redirect targets; restrict to same-host paths or allowlisted hosts.",
+		fileTypes: [".rb"],
+	},
+	{
+		name: "Ruby path traversal / arbitrary file access from params",
+		regex:
+			/\b(send_file|File\.(read|open)|IO\.read)\(\s*(params|request\.params|cookies|session)\b/g,
+		severity: "high",
+		message:
+			"File operations using request-derived paths can enable path traversal and arbitrary file read/write",
+		fix: "Never use user-provided paths directly; use IDs, canonicalize paths, and enforce a base directory.",
+		fileTypes: [".rb"],
+	},
+	{
 		name: "Ruby open() command injection",
 		regex: /\bopen\s*\(\s*["']\||\bopen\s*\([^)]*#\{[^}]*\}/g,
 		severity: "critical",
