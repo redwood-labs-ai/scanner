@@ -68,4 +68,24 @@ export default definePatterns([
 		fix: "Validate and whitelist allowed URL schemes and hosts",
 		fileTypes: [".go"],
 	},
+	{
+		name: "Go weak PRNG seeding for secrets (CVE-2026-25726)",
+		regex:
+			/math\/rand\s*\.\s*New\s*\(\s*math\/rand\.NewSource\s*\(\s*time\.Now\s*\(\)\.UnixNano\s*\(\)\s*\)|rand\.Seed\s*\(\s*time\.Now\s*\(\)\.UnixNano\s*\(\)\s*\)/g,
+		severity: "critical",
+		message:
+			"Weak PRNG seeding using math/rand with time.Now().UnixNano() for security-sensitive operations. As seen in CVE-2026-25726 (Cloudreve), this allows attackers to predict secrets by brute-forcing the timestamp seed, leading to JWT forgery and account takeover",
+		fix: "Use crypto/rand for cryptographic randomness. Replace math/rand with crypto/rand.Read() or crypto/rand.Int() for generating secrets, tokens, and keys",
+		fileTypes: [".go"],
+	},
+	{
+		name: "Go filesystem writes using r.URL.Path (CVE-2026-35392)",
+		regex:
+			/os\.(Open|Create|WriteFile|ReadFile)\s*\([^)]*r\.URL\.Path|io\.CopyFile\s*\([^)]*r\.URL\.Path|filepath\.Join\s*\([^)]*r\.URL\.Path/g,
+		severity: "critical",
+		message:
+			"Filesystem operation using unsanitized r.URL.Path allows path traversal attacks. As seen in CVE-2026-35392 (goshs), this enables arbitrary file write/overwrite on the server",
+		fix: "Never use r.URL.Path directly for filesystem operations. Sanitize input with filepath.Clean(), validate the result stays within the intended base directory, and reject paths containing '..' or absolute paths",
+		fileTypes: [".go"],
+	},
 ]);
