@@ -12,7 +12,7 @@ import { validateAgentChain } from "./scan/agent-chain-validator.js";
 import { loadConfig, loadConfigFromPath } from "./scan/config.js";
 import { type Issue, scan } from "./scan/engine.js";
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.2";
 
 // Helper functions
 
