@@ -79,9 +79,9 @@ export default definePatterns([
 		fileTypes: [".go"],
 	},
 	{
-		name: "Go filesystem writes using r.URL.Path (CVE-2026-35392)",
+		name: "Go filesystem writes using (r|req).URL.Path (CVE-2026-35392)",
 		regex:
-			/os\.(Open|Create|WriteFile|ReadFile)\s*\([^)]*r\.URL\.Path|io\.Copy\s*\([^)]*r\.URL\.Path|filepath\.Join\s*\([^)]*r\.URL\.Path/g,
+			/os\.(Open|Create|WriteFile|ReadFile)\s*\([^)]*(?:r|req)\.URL\.Path|io\.Copy\s*\([^)]*(?:r|req)\.URL\.Path|filepath\.Join\s*\([^)]*(?:r|req)\.URL\.Path/g,
 		severity: "critical",
 		message:
 			"Filesystem operation using unsanitized r.URL.Path allows path traversal attacks. As seen in CVE-2026-35392 (goshs), this enables arbitrary file write/overwrite on the server",
