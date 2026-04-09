@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-04-09
+
+### Added
+
+- **12 New Security Patterns**
+  - Docker socket bind-mount detection (`/var/run/docker.sock`) — critical
+  - Docker daemon TCP 2375 exposure (CVE-2025-9074 class) — critical
+  - Go weak PRNG seeding for secrets (CVE-2026-25726 class) — critical
+  - Go filesystem writes using `(r|req).URL.Path` (CVE-2026-35392 class) — critical
+  - Ruby/Rails render `inline:`/`file:`/`template:` from request-derived input — critical
+  - Ruby/Rails dynamic `order`/`reorder`/`group`/`having` from request-derived input — high
+  - Ruby/Rails `Arel.sql(...)` from request-derived input — high
+  - Ruby unsafe `Marshal.load/restore` deserialization — critical
+  - Ruby SSRF via `URI.open` / `OpenURI.open_uri` from request-derived input — high
+  - Ruby SSRF via `Net::HTTP.*(URI(params...))` — high
+  - Ruby open redirect via `redirect_to` with request-derived input — medium
+  - Ruby path traversal / arbitrary file access via `send_file` / `File.read/open` / `IO.read` with request-derived input — high
+
+### Stats
+
+- **91 patterns** across JS, TS, Python, Go, Ruby, PHP, Rust (up from 79 in 0.4.1)
+
 ## [0.4.1] - 2026-04-06
 
 ### Added
