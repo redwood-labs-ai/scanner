@@ -71,7 +71,7 @@ export default definePatterns([
 	{
 		name: "Go weak PRNG seeding for secrets (CVE-2026-25726)",
 		regex:
-			/math\/rand\s*\.\s*New\s*\(\s*math\/rand\.NewSource\s*\(\s*time\.Now\s*\(\)\.UnixNano\s*\(\)\s*\)|rand\.Seed\s*\(\s*time\.Now\s*\(\)\.UnixNano\s*\(\)\s*\)/g,
+			/\brand\s*\.\s*New\s*\(\s*rand\s*\.\s*NewSource\s*\(\s*time\.Now\s*\(\)\.UnixNano\s*\(\)\s*\)\s*\)|\brand\s*\.\s*Seed\s*\(\s*time\.Now\s*\(\)\.UnixNano\s*\(\)\s*\)/g,
 		severity: "critical",
 		message:
 			"Weak PRNG seeding using math/rand with time.Now().UnixNano() for security-sensitive operations. As seen in CVE-2026-25726 (Cloudreve), this allows attackers to predict secrets by brute-forcing the timestamp seed, leading to JWT forgery and account takeover",
@@ -81,7 +81,7 @@ export default definePatterns([
 	{
 		name: "Go filesystem writes using r.URL.Path (CVE-2026-35392)",
 		regex:
-			/os\.(Open|Create|WriteFile|ReadFile)\s*\([^)]*r\.URL\.Path|io\.CopyFile\s*\([^)]*r\.URL\.Path|filepath\.Join\s*\([^)]*r\.URL\.Path/g,
+			/os\.(Open|Create|WriteFile|ReadFile)\s*\([^)]*r\.URL\.Path|io\.Copy\s*\([^)]*r\.URL\.Path|filepath\.Join\s*\([^)]*r\.URL\.Path/g,
 		severity: "critical",
 		message:
 			"Filesystem operation using unsanitized r.URL.Path allows path traversal attacks. As seen in CVE-2026-35392 (goshs), this enables arbitrary file write/overwrite on the server",
