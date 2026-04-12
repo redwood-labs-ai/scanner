@@ -25,7 +25,7 @@ export default definePatterns([
 	{
 		name: "Hardcoded database credentials",
 		regex:
-			/(DATABASE_URL|POSTGRES_PASSWORD|MYSQL_PASSWORD|REDIS_PASSWORD|MONGO_URI)\s*[:=]\s*['"]?[^${\s][^'"}\s]+['"]?/gi,
+			/(DATABASE_URL|POSTGRES_PASSWORD|MYSQL_PASSWORD|REDIS_PASSWORD|MONGO_URI)\s*[:=]\s*['"]?(?!localdev|localhost|development|dev$|test$|testing|staging|docker|changeme|password$|secret$|admin$|placeholder|demo$)[^${\s][^'"}\s]+['"]?/gi,
 		severity: "high",
 		message: "Database credentials appear to be hardcoded",
 		fix: "Use environment variables or secrets management for database credentials",
