@@ -19,7 +19,8 @@ export default definePatterns([
 	},
 	{
 		name: "SQL template literal injection",
-		regex: /`[\s\S]{0,20}(SELECT|INSERT|UPDATE|DELETE)[\s\S]{0,50}\$\{/gi,
+		regex:
+			/`[\s\S]{0,20}\b(?:SELECT|INSERT|UPDATE|DELETE|DROP|WHERE|FROM|INTO|VALUES)\b[\s\S]{0,50}\$\{/gi,
 		severity: "critical",
 		message: "SQL query built with template literal is vulnerable to injection",
 		fix: "Use parameterized queries with prepared statements",
