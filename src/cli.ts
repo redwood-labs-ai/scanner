@@ -57,44 +57,27 @@ function printResults(issues: Issue[]) {
 	console.log(ansi.bold(`Found ${issues.length} issue(s):`));
 	console.log("─".repeat(50));
 
-	// Group by type
-	const byType: Record<string, Issue[]> = {};
 	for (const issue of issues) {
-		const key = issue.type;
-		if (!byType[key]) byType[key] = [];
-		byType[key].push(issue);
-	}
-
-	// Sort by severity
-	const severityOrder: Record<string, number> = {
-		critical: 0,
-		high: 1,
-		medium: 2,
-		low: 3,
-		info: 4,
-	};
-	const sortedTypes = Object.entries(byType).sort((a, b) => {
-		return (severityOrder[a[1][0].severity] ?? 5) - (severityOrder[b[1][0].severity] ?? 5);
-	});
-
-	for (const [type, findings] of sortedTypes) {
-		const sev = findings[0].severity;
+		const sev = issue.severity;
 		const icon = getSeverityIcon(sev);
+		const locs = issue.locations || [{ file: issue.file, line: issue.line }];
 
-		console.log(`\n${icon} ${ansi.bold(type)} (${findings.length})`);
-		console.log(ansi.dim(`   ${findings[0].message}`));
-		if (findings[0].fix) {
-			console.log(ansi.cyan(`   Fix: ${findings[0].fix.split("\n")[0]}`));
+		console.log(
+			`\n${icon} ${ansi.bold(issue.type)}${locs.length > 1 ? ` (${locs.length} files)` : ""}`
+		);
+		console.log(ansi.dim(`   ${issue.message}`));
+		if (issue.fix) {
+			console.log(ansi.cyan(`   Fix: ${issue.fix.split("\n")[0]}`));
 		}
 		console.log("   Files:");
 
 		const maxFiles = 5;
-		findings.slice(0, maxFiles).forEach((f) => {
-			const loc = f.line ? `${f.file}:${f.line}` : f.file;
-			console.log(ansi.dim(`   - ${loc}`));
+		locs.slice(0, maxFiles).forEach((loc) => {
+			const locStr = loc.line ? `${loc.file}:${loc.line}` : loc.file;
+			console.log(ansi.dim(`   - ${locStr}`));
 		});
-		if (findings.length > maxFiles) {
-			console.log(ansi.dim(`   ... and ${findings.length - maxFiles} more`));
+		if (locs.length > maxFiles) {
+			console.log(ansi.dim(`   ... and ${locs.length - maxFiles} more`));
 		}
 	}
 
@@ -114,6 +97,28 @@ function printResults(issues: Issue[]) {
 }
 
 function toSarif(issues: Issue[], _repoPath: string) {
+	// Expand deduplicated issues back into individual results per location
+	const results: any[] = [];
+	for (const issue of issues) {
+		const locs = issue.locations || [{ file: issue.file, line: issue.line }];
+		for (const loc of locs) {
+			results.push({
+				ruleId: issue.type,
+				level:
+					issue.severity === "critical" ? "error" : issue.severity === "high" ? "error" : "warning",
+				message: { text: issue.message },
+				locations: [
+					{
+						physicalLocation: {
+							artifactLocation: { uri: loc.file },
+							region: { startLine: loc.line || 1 },
+						},
+					},
+				],
+			});
+		}
+	}
+
 	return {
 		$schema:
 			"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
@@ -127,24 +132,7 @@ function toSarif(issues: Issue[], _repoPath: string) {
 						informationUri: "https://github.com/redwood-labs/scanner",
 					},
 				},
-				results: issues.map((issue) => ({
-					ruleId: issue.type,
-					level:
-						issue.severity === "critical"
-							? "error"
-							: issue.severity === "high"
-								? "error"
-								: "warning",
-					message: { text: issue.message },
-					locations: [
-						{
-							physicalLocation: {
-								artifactLocation: { uri: issue.file },
-								region: { startLine: issue.line || 1 },
-							},
-						},
-					],
-				})),
+				results,
 			},
 		],
 	};

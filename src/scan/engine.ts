@@ -15,6 +15,8 @@ export interface Issue {
 	message: string;
 	match?: string;
 	fix?: string;
+	/** Populated after dedup — all affected locations for this issue type */
+	locations?: Array<{ file: string; line?: number }>;
 }
 
 export interface ScanOptions {
@@ -87,16 +89,65 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 		...chainIssues.map((i) => ({ ...i, id: generateId() })),
 	];
 
+	// Deduplicate issues by type — collapse per-file findings into one issue with locations[]
+	const deduped = deduplicateIssues(allIssues);
+
 	// Apply max findings limit if configured
-	if (config.maxFindings && allIssues.length > config.maxFindings) {
-		allIssues.length = config.maxFindings;
+	if (config.maxFindings && deduped.length > config.maxFindings) {
+		deduped.length = config.maxFindings;
+	}
+
+	return deduped;
+}
+
+/**
+ * Deduplicate issues by type.
+ *
+ * Pattern scanners emit one finding per file match, which creates massive
+ * output when a rule like "Prototype pollution via convict" fires across
+ * 15 files. This groups by issue.type, keeps the highest severity, and
+ * populates a locations[] array with every affected file+line.
+ */
+function deduplicateIssues(issues: Issue[]): Issue[] {
+	const groups = new Map<string, Issue[]>();
+
+	for (const issue of issues) {
+		const existing = groups.get(issue.type);
+		if (existing) {
+			existing.push(issue);
+		} else {
+			groups.set(issue.type, [issue]);
+		}
+	}
+
+	const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+	const deduped: Issue[] = [];
+
+	for (const [_type, group] of groups) {
+		if (group.length === 1) {
+			// Single occurrence — add locations array for consistency
+			const issue = group[0];
+			issue.locations = [{ file: issue.file, line: issue.line }];
+			deduped.push(issue);
+			continue;
+		}
+
+		// Multiple occurrences — pick representative with highest severity
+		group.sort((a, b) => (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4));
+		const representative = group[0];
+
+		deduped.push({
+			...representative,
+			file: `(${group.length} files)`,
+			line: undefined,
+			locations: group.map((i) => ({ file: i.file, line: i.line })),
+		});
 	}
 
 	// Sort by severity
-	const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-	allIssues.sort((a, b) => (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4));
+	deduped.sort((a, b) => (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4));
 
-	return allIssues;
+	return deduped;
 }
 
 async function runScanner(
