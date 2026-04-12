@@ -144,6 +144,17 @@ export async function scanPatterns(
 						continue;
 					}
 
+					// Taint-lite: skip if the matched line contains safe context identifiers
+					// (e.g., __dirname, path.join — the input isn't user-controlled)
+					if (pattern.safeContext) {
+						const lineStart = content.lastIndexOf("\n", match.index) + 1;
+						const lineEnd = content.indexOf("\n", match.index);
+						const line = content.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
+						if (pattern.safeContext.some((ctx) => line.includes(ctx))) {
+							continue;
+						}
+					}
+
 					issues.push({
 						id: `pattern-${issues.length + 1}`,
 						type: pattern.name,
