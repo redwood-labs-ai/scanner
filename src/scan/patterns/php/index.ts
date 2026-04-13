@@ -25,4 +25,12 @@ export default definePatterns([
 		fix: "Validate file extension, MIME type, and content; store outside webroot",
 		fileTypes: [".php"],
 	},
+	{
+		name: "Command injection via exec/system/passthru/shell_exec",
+		regex: /(?:exec|system|passthru|shell_exec)\s*\(\s*\$|`[^`]*\$\w+/g,
+		severity: "critical",
+		message: "Process execution with potentially user-controlled input enables command injection",
+		fix: "Use exec() with explicit argument arrays, validate/whitelist all inputs, or use safer alternatives",
+		fileTypes: [".php"],
+	},
 ]);
