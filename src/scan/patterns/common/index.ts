@@ -183,4 +183,14 @@ export default definePatterns([
 		fix: "Use DigitalOcean App Platform or restricted metadata access. Implement firewall rules to block unauthorized metadata requests",
 		fileTypes: [".go", ".py", ".js", ".ts", ".java", ".rb"],
 	},
+	{
+		name: "JWT token in URL query parameter",
+		regex:
+			/[?&](?:token|jwt|auth|access[_-]?token|id[_-]?token|bearer)\\s*=\\s*[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]*/g,
+		severity: "high",
+		message:
+			"JWT token in URL query parameter - leaks in server logs, browser history, Referer headers, and analytics",
+		fix: "Pass JWT tokens in Authorization headers (Bearer token) instead of URL parameters. If URL passing is required, use POST body with HTTPS",
+		fileTypes: [".js", ".ts", ".py", ".go", ".java", ".rb", ".php", ".cs", ".rs"],
+	},
 ]);
