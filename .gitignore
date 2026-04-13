@@ -5,3 +5,4 @@ dist/
 *.tgz
 memory/
 memory.db
+__pycache__/

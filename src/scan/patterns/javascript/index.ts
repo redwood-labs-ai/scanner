@@ -33,6 +33,7 @@ export default definePatterns([
 		message: "Fetch with potentially user-controlled URL",
 		fix: "Validate and whitelist allowed URL schemes and hosts",
 		fileTypes: [".js", ".ts"],
+		safeContext: ["config.", "process.env", "new URL(", "constants.", "env."],
 	},
 	{
 		name: "Path traversal via file read",
@@ -41,6 +42,19 @@ export default definePatterns([
 		message: "File operation with potentially user-controlled path",
 		fix: "Validate path and use path.resolve() to prevent directory traversal",
 		fileTypes: [".js", ".ts"],
+		safeContext: [
+			"__dirname",
+			"__filename",
+			"path.join(",
+			"path.resolve(",
+			"path.normalize(",
+			"process.cwd()",
+			"import.meta.url",
+			"import.meta.dirname",
+			"configDir",
+			"appRoot",
+			"projectRoot",
+		],
 	},
 	{
 		name: "XXE via DOMParser",
