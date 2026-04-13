@@ -27,6 +27,7 @@ describe("Pattern Scanner", () => {
 			assert.ok(stats.go >= 0, "Should have go patterns");
 			assert.ok(stats.ruby >= 0, "Should have ruby patterns");
 			assert.ok(stats.php >= 0, "Should have php patterns");
+			assert.ok(stats.cpp >= 0, "Should have cpp patterns");
 			assert.ok(stats.common >= 0, "Should have common patterns");
 			assert.ok(stats.config >= 0, "Should have config patterns");
 		});
@@ -40,6 +41,7 @@ describe("Pattern Scanner", () => {
 				stats.go +
 				stats.ruby +
 				stats.php +
+				stats.cpp +
 				stats.common +
 				stats.config;
 			assert.strictEqual(
