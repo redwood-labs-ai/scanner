@@ -35,7 +35,7 @@ export default definePatterns([
 	},
 	{
 		name: "preg_replace() with /e modifier (RCE)",
-		regex: /preg_replace\s*\(\s*['"][^'"]*\/e['"]/g,
+		regex: /preg_replace\s*\(\s*['"][^'"]*\/e[gimsxADSUXJu]*['"]/g,
 		severity: "critical",
 		message: "preg_replace() /e modifier executes replacement as PHP code - deprecated RCE vector",
 		fix: "Replace with preg_replace_callback() - the /e modifier was removed in PHP 7.0",
