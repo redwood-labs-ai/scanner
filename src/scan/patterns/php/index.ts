@@ -33,4 +33,12 @@ export default definePatterns([
 		fix: "Use exec() with explicit argument arrays, validate/whitelist all inputs, or use safer alternatives",
 		fileTypes: [".php"],
 	},
+	{
+		name: "preg_replace() with /e modifier (RCE)",
+		regex: /preg_replace\s*\(\s*['"][^'"]*\/e[gimsxADSUXJu]*['"]/g,
+		severity: "critical",
+		message: "preg_replace() /e modifier executes replacement as PHP code - deprecated RCE vector",
+		fix: "Replace with preg_replace_callback() - the /e modifier was removed in PHP 7.0",
+		fileTypes: [".php"],
+	},
 ]);
