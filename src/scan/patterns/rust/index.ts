@@ -37,6 +37,15 @@ export default definePatterns([
 		fileTypes: [".rs"],
 	},
 	{
+		name: "Rust shell invocation via Command::new(sh)",
+		regex: /Command::new\s*\(\s*["']sh["']\s*\)\s*\.arg\s*\(\s*["']-c["']\s*\)\s*\.arg\s*\(/g,
+		severity: "critical",
+		message:
+			'Shell invocation with Command::new("sh").arg("-c").arg(input) allows command injection',
+		fix: "Avoid invoking a shell. Use Command::new() directly with separate args, or validate/whitelist the input before passing to sh -c",
+		fileTypes: [".rs"],
+	},
+	{
 		name: "Rust shell command execution with set_shell",
 		regex: /\.set_shell\s*\(\s*true\s*\)/g,
 		severity: "critical",
