@@ -30,14 +30,14 @@ export default definePatterns([
 	{
 		name: "Rust command injection via std::process::Command",
 		regex:
-			/std::process::Command\s*(::new|::new)\s*\([^)]*\)\s*\.\s*(arg|args)\s*\([^)]*\$\w+|\.arg\s*\([^)]*\+\s*|shell\s*=\s*true/g,
+			/std::process::Command\s*::new\s*\([^)]*\).*?\.arg\s*\(\s*\w+\s*\+|\.arg\s*\(\s*format!\s*\(/g,
 		severity: "critical",
 		message: "Command execution with potentially user-controlled input enables command injection",
-		fix: "Use arg() with explicit argument arrays, validate/whitelist all inputs, or avoid shell execution",
+		fix: "Use arg() with individual string arguments instead of concatenation. Validate/whitelist all inputs before passing to Command",
 		fileTypes: [".rs"],
 	},
 	{
-		name: "Rust shell command execution with shell=true",
+		name: "Rust shell command execution with set_shell",
 		regex: /\.set_shell\s*\(\s*true\s*\)/g,
 		severity: "critical",
 		message: "Command executed with shell=true enables command injection attacks",
