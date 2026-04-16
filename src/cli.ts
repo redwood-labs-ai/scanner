@@ -250,7 +250,16 @@ async function runScan(
 		}
 
 		// Confidence filter
+		const CONFIDENCE_LEVELS = new Set(["high", "medium", "low"]);
 		const confidenceVal = options.confidence;
+		if (typeof confidenceVal === "string" && !CONFIDENCE_LEVELS.has(confidenceVal)) {
+			console.error(
+				ansi.red(
+					`Error: Invalid confidence level '${confidenceVal}'. Must be one of: high, medium, low`
+				)
+			);
+			process.exit(1);
+		}
 		const minConfidence =
 			typeof confidenceVal === "string"
 				? (confidenceVal as "high" | "medium" | "low")
