@@ -191,7 +191,7 @@ const SECRET_PATTERNS = [
 	},
 ];
 
-export async function scanSecrets(repoPath: string): Promise<Issue[]> {
+export async function scanSecrets(repoPath: string, changedFiles?: Set<string>): Promise<Issue[]> {
 	const issues: Issue[] = [];
 
 	// Load .redwoodignore patterns
@@ -200,7 +200,12 @@ export async function scanSecrets(repoPath: string): Promise<Issue[]> {
 
 	const files = getFiles(repoPath, repoPath, ignorePatterns);
 
-	for (const file of files) {
+	// Filter to only changed files if diff mode
+	const filesToScan = changedFiles
+		? files.filter((f) => changedFiles.has(relative(repoPath, f)))
+		: files;
+
+	for (const file of filesToScan) {
 		const relPath = relative(repoPath, file);
 
 		try {
