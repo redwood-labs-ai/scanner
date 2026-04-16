@@ -168,7 +168,7 @@ export default definePatterns([
 	{
 		name: ".env file with generic secret/token/key (RED-162)",
 		regex:
-			/\b(?:SECRET|TOKEN|API_KEY|PRIVATE_KEY|SIGNING_SECRET|ENCRYPTION_KEY|AUTH_KEY)\s*[:=]\s*['"]?(?!(?:secret|password|admin|root|123456|changeme|default|test|example|placeholder|your_|change_this)[^'"]*['"]?(?=\s*$|\s*#))[\S]{16,}/gi,
+			/\b(?:SECRET|TOKEN|API_KEY|PRIVATE_KEY|SIGNING_SECRET|ENCRYPTION_KEY|AUTH_KEY)\s*[:=]\s*['"]?(?!(?:secret|password|admin|root|123456|changeme|default|test|example|placeholder|your_|change_this)[^'"]*['"]?(?=\s*$|\s*#))[a-zA-Z0-9/+=_\-]{20,}/gi,
 		severity: "high",
 		message:
 			"Generic secret token/key with a real value (16+ chars, not a placeholder) found in .env file. Long non-placeholder values indicate actual credentials that should not be committed",
@@ -188,7 +188,7 @@ export default definePatterns([
 	{
 		name: ".env file with Google Cloud credentials (RED-162)",
 		regex:
-			/\b(?:GOOGLE_SERVICE_ACCOUNT_KEY|GOOGLE_API_KEY|GOOGLE_CLIENT_SECRET|SERVICE_ACCOUNT_JSON)\s*[:=]\s*['"]?(?:\{[\s\S]*?(?:"project_id"|"private_key"|REDWOOD_SCANNER_HOOK_PAYLOAD)|AIza[A-Za-z0-9_-]{35})['"]?/gs,
+			/\\b(?:GOOGLE_SERVICE_ACCOUNT_KEY|GOOGLE_API_KEY|GOOGLE_CLIENT_SECRET|SERVICE_ACCOUNT_JSON)\\s*[:=]\\s*['\"]?(?:\\{[\\s\\S]*?(?:\"project_id\"|\"private_key\")|AIza[A-Za-z0-9_-]{35})['\"]?/gs,
 		severity: "critical",
 		message:
 			"Google Cloud credentials found in .env file. Service account keys and API keys can provide full access to GCP resources, billing, and data",
@@ -216,13 +216,23 @@ export default definePatterns([
 		fileTypes: [".env"],
 	},
 	{
-		name: ".env file with Azure credentials (RED-162)",
+		name: ".env file with Azure client credentials (RED-162)",
 		regex:
-			/\b(?:AZURE_CLIENT_SECRET|AZURE_TENANT_ID|AZURE_SUBSCRIPTION_ID|AZURE_CLIENT_ID)\s*[:=]\s*['"]?(?!\$|${).*[^'"]{8,}['"]?/gi,
+			/\b(?:AZURE_CLIENT_SECRET|AZURE_CLIENT_ID)\s*[:=]\s*['"]?(?!\$|\$\{)[^'"]{8,}['"]?/gi,
 		severity: "high",
 		message:
-			"Azure cloud credentials found in .env file. Exposed Azure credentials can lead to unauthorized access to cloud resources, billing abuse, and data exposure",
-		fix: "Use managed identities, Azure Key Vault, or workload identity. Never commit Azure secrets. Use least-privilege service principals with short expiration",
-		fileTypes: [".env"],
+			"Azure client credentials found in .env file. Exposed secrets can lead to unauthorized access to cloud resources and billing abuse",
+		fix: "Use managed identities, Azure Key Vault, or workload identity. Never commit Azure secrets",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
+	},
+	{
+		name: ".env file with Azure subscription/tenant IDs (RED-162)",
+		regex:
+			/\b(?:AZURE_TENANT_ID|AZURE_SUBSCRIPTION_ID)\s*[:=]\s*['"]?(?!\$|\$\{)[^'"]{8,}['"]?/gi,
+		severity: "medium",
+		message:
+			"Azure tenant or subscription ID in .env file. While not secret, these identifiers can aid reconnaissance",
+		fix: "Use environment variable references for configuration portability",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
 	},
 ]);
