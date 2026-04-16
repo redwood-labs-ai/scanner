@@ -41,4 +41,38 @@ export default definePatterns([
 		fix: "Replace with preg_replace_callback() - the /e modifier was removed in PHP 7.0",
 		fileTypes: [".php"],
 	},
+	{
+		name: "unserialize() on user input (RCE)",
+		regex:
+			/unserialize\s*\(\s*\$|unserialize\s*\([^)]*\+|unserialize\s*\(\s*$_(GET|POST|REQUEST|COOKIE)/g,
+		severity: "critical",
+		message: "PHP unserialize() on user-controlled input enables remote code execution",
+		fix: "Never unserialize untrusted data; use JSON or other safe serialization formats",
+		fileTypes: [".php"],
+	},
+	{
+		name: "extract() on superglobals (variable injection)",
+		regex: /extract\s*\(\s*\$_(GET|POST|REQUEST|COOKIE|ENV|SERVER)/g,
+		severity: "high",
+		message: "extract() on superglobals enables variable injection attacks",
+		fix: "Access superglobal variables directly instead of using extract()",
+		fileTypes: [".php"],
+	},
+	{
+		name: "CRLF header injection via header()",
+		regex: /header\s*\([^)]*\$|header\s*\([^)]*\+|header\s*\(\s*$_(GET|POST|REQUEST|COOKIE)/g,
+		severity: "high",
+		message:
+			"header() with user-controlled input enables HTTP response header injection (CRLF injection)",
+		fix: "Never pass user input to header(); validate and sanitize all header values",
+		fileTypes: [".php"],
+	},
+	{
+		name: "SQL string concatenation (mysql_query/mysqli_query)",
+		regex: /(?:mysql|mysqli)_query\s*\([^)]*\+|mysql_query\s*\([^)]*\$|mysqli_query\s*\([^)]*\$/g,
+		severity: "critical",
+		message: "SQL query with string concatenation is vulnerable to SQL injection",
+		fix: "Use prepared statements with parameterized queries instead of string concatenation",
+		fileTypes: [".php"],
+	},
 ]);
