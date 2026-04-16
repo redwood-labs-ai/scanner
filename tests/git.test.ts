@@ -14,13 +14,8 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, it, before, after } from "node:test";
-import {
-	getChangedFiles,
-	getChangedHunks,
-	getDiffInfo,
-	isLineChanged,
-} from "../src/scan/git.js";
+import { after, before, describe, it } from "node:test";
+import { getChangedFiles, getChangedHunks, getDiffInfo, isLineChanged } from "../src/scan/git.js";
 
 /**
  * Create a temporary git repo with an initial commit,
@@ -43,10 +38,7 @@ function createTestRepo(): { repoPath: string; cleanup: () => void } {
 		});
 
 		// Create initial files on main branch
-		writeFileSync(
-			join(repoPath, "unchanged.ts"),
-			"export const version = '1.0.0';\n"
-		);
+		writeFileSync(join(repoPath, "unchanged.ts"), "export const version = '1.0.0';\n");
 		writeFileSync(
 			join(repoPath, "modified.ts"),
 			"export const secret = 'old';\nconst x = 1;\nconst y = 2;\n"

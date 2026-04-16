@@ -50,16 +50,12 @@ export function getChangedFiles(repoPath: string, base: string): Set<string> {
 	// Get changed files (using triple-dot diff for branch comparison)
 	let output: string;
 	try {
-		output = execFileSync(
-			"git",
-			["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`],
-			{
-				cwd: absPath,
-				timeout: 30000,
-				encoding: "utf-8",
-				maxBuffer: 10 * 1024 * 1024,
-			}
-		);
+		output = execFileSync("git", ["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`], {
+			cwd: absPath,
+			timeout: 30000,
+			encoding: "utf-8",
+			maxBuffer: 10 * 1024 * 1024,
+		});
 	} catch {
 		// Fallback: try double-dot diff if triple-dot fails (e.g., base is ancestor)
 		try {
@@ -156,10 +152,7 @@ export function getDiffInfo(repoPath: string, base: string): DiffInfo {
 /**
  * Check if a line number falls within any of the changed hunks for a file.
  */
-export function isLineChanged(
-	line: number,
-	fileHunks: [number, number][] | undefined
-): boolean {
+export function isLineChanged(line: number, fileHunks: [number, number][] | undefined): boolean {
 	if (!fileHunks || fileHunks.length === 0) return false;
 	return fileHunks.some(([start, end]) => line >= start && line <= end);
 }

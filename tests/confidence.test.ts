@@ -81,7 +81,10 @@ describe("Confidence Scoring", () => {
 
 		it("should set low confidence for safe context: __dirname", () => {
 			const issues = [
-				makeIssue({ file: "src/config.ts", match: "const p = path.join(__dirname, 'config.json')" }),
+				makeIssue({
+					file: "src/config.ts",
+					match: "const p = path.join(__dirname, 'config.json')",
+				}),
 			];
 			applyConfidence(issues);
 			assert.strictEqual(issues[0].confidence, "low");
@@ -184,9 +187,7 @@ describe("Confidence Scoring", () => {
 
 		it("should prefer test file check over safe context check", () => {
 			// Test file should trigger low even without safe context
-			const issues = [
-				makeIssue({ file: "tests/app.test.ts", match: "eval(input)" }),
-			];
+			const issues = [makeIssue({ file: "tests/app.test.ts", match: "eval(input)" })];
 			applyConfidence(issues);
 			assert.strictEqual(issues[0].confidence, "low");
 		});

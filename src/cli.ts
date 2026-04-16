@@ -261,9 +261,7 @@ async function runScan(
 			process.exit(1);
 		}
 		const minConfidence =
-			typeof confidenceVal === "string"
-				? (confidenceVal as "high" | "medium" | "low")
-				: undefined;
+			typeof confidenceVal === "string" ? (confidenceVal as "high" | "medium" | "low") : undefined;
 
 		// Determine output format early (needed for quiet mode)
 		const useJson = jsonVal === true || config.output?.json;
@@ -393,19 +391,19 @@ async function main() {
 				? {
 						args: args.slice(1),
 						allowPositionals: true,
-					options: {
-						config: { type: "string" },
-						json: { type: "boolean" },
-						sarif: { type: "boolean" },
-						verbose: { type: "boolean" },
-						"bypass-ignore": { type: "boolean" },
-						severity: { type: "string" },
-						diff: { type: "string" },
-						"new-only": { type: "boolean" },
-						confidence: { type: "string" },
-						"no-prompt": { type: "boolean" },
-						help: { type: "boolean" },
-					},
+						options: {
+							config: { type: "string" },
+							json: { type: "boolean" },
+							sarif: { type: "boolean" },
+							verbose: { type: "boolean" },
+							"bypass-ignore": { type: "boolean" },
+							severity: { type: "string" },
+							diff: { type: "string" },
+							"new-only": { type: "boolean" },
+							confidence: { type: "string" },
+							"no-prompt": { type: "boolean" },
+							help: { type: "boolean" },
+						},
 					}
 				: {
 						args: args.slice(1),

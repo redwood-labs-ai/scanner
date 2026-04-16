@@ -2,7 +2,7 @@ import { ansi } from "../ansi.js";
 import { validateAgentChain } from "./agent-chain-validator.js";
 import type { RedwoodConfig } from "./config.js";
 import { scanDependencies } from "./deps.js";
-import { getDiffInfo, isLineChanged, type DiffInfo } from "./git.js";
+import { type DiffInfo, getDiffInfo, isLineChanged } from "./git.js";
 import { scanMCP } from "./mcp.js";
 import { scanPatterns } from "./patterns.js";
 import { scanSecrets } from "./secrets.js";
@@ -74,7 +74,10 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 		scanners.push(["Dependencies", () => scanDependencies(repoPath)]);
 	}
 	if (config.scanners?.patterns !== false) {
-		scanners.push(["Patterns", () => scanPatterns(repoPath, options.bypassIgnore, diffInfo?.changedFiles)]);
+		scanners.push([
+			"Patterns",
+			() => scanPatterns(repoPath, options.bypassIgnore, diffInfo?.changedFiles),
+		]);
 	}
 	if (config.scanners?.mcp !== false) {
 		scanners.push(["MCP", () => scanMCP(repoPath)]);
