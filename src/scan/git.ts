@@ -131,8 +131,11 @@ export function getChangedHunks(repoPath: string, base: string): Map<string, [nu
 		if (hunkMatch && currentFile) {
 			const start = parseInt(hunkMatch[1], 10);
 			const count = hunkMatch[2] ? parseInt(hunkMatch[2], 10) : 1;
+			// Skip pure deletions — count=0 means no new lines were added at this
+			// position, so nothing for --new-only to flag.
+			if (count === 0) continue;
 			const end = start + count - 1;
-			hunks.get(currentFile)?.push([start, Math.max(end, start)]);
+			hunks.get(currentFile)?.push([start, end]);
 		}
 	}
 

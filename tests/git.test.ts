@@ -26,8 +26,10 @@ function createTestRepo(): { repoPath: string; cleanup: () => void } {
 	const repoPath = tmpDir;
 
 	try {
-		// Init repo
-		execFileSync("git", ["init", repoPath], { stdio: "pipe" });
+		// Init repo with an explicit initial branch — git's default varies by
+		// init.defaultBranch (older git / fresh macOS defaults to "master"), and
+		// the tests below all diff against "main".
+		execFileSync("git", ["init", "-b", "main", repoPath], { stdio: "pipe" });
 		execFileSync("git", ["config", "user.email", "test@test.com"], {
 			cwd: repoPath,
 			stdio: "pipe",

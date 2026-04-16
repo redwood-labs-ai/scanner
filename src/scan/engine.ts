@@ -226,8 +226,8 @@ async function runScanner(
  */
 export function applyConfidence(issues: Issue[]): void {
 	const TEST_FILE_PATTERNS = [
-		/\.test\.[jt]sx?$/,
-		/\.spec\.[jt]sx?$/,
+		/\.test\.[cm]?[jt]sx?$/,
+		/\.spec\.[cm]?[jt]sx?$/,
 		/__tests__\//,
 		/\/tests?\//,
 		/\/spec\//,
@@ -285,41 +285,37 @@ export function applyConfidence(issues: Issue[]): void {
  * and removes issues with no remaining locations.
  */
 function filterToNewOnly(issues: Issue[], diffInfo: DiffInfo): void {
+	// deduplicateIssues always populates locations[], so we only need the
+	// locations path here.
 	for (let i = issues.length - 1; i >= 0; i--) {
 		const issue = issues[i];
+		if (!issue.locations) continue;
 
-		if (issue.locations) {
-			const originalCount = issue.locations.length;
+		const originalCount = issue.locations.length;
 
-			// Filter locations to only changed lines
-			issue.locations = issue.locations.filter((loc) => {
-				const hunks = diffInfo.changedHunks.get(loc.file);
-				if (!hunks || hunks.length === 0) return false;
-				if (!loc.line) return true; // File-level finding — keep if file was changed
-				return isLineChanged(loc.line, hunks);
-			});
+		// Filter locations to only changed lines
+		issue.locations = issue.locations.filter((loc) => {
+			const hunks = diffInfo.changedHunks.get(loc.file);
+			if (!hunks || hunks.length === 0) return false;
+			if (!loc.line) return true; // File-level finding — keep if file was changed
+			return isLineChanged(loc.line, hunks);
+		});
 
-			// Remove issue if no locations remain
-			if (issue.locations.length === 0) {
-				issues.splice(i, 1);
-			} else {
-				// Update file count if locations were reduced
-				if (issue.locations.length < originalCount && originalCount > 1) {
-					issue.file = `(${issue.locations.length} files)`;
-				}
+		// Remove issue if no locations remain
+		if (issue.locations.length === 0) {
+			issues.splice(i, 1);
+			continue;
+		}
 
-				if (issue.locations.length === 1) {
-					// Unwrap single location back to file/line
-					issue.file = issue.locations[0].file;
-					issue.line = issue.locations[0].line;
-				}
-			}
-		} else if (issue.file && issue.line) {
-			// Non-deduped issue — check if its line was changed
-			const hunks = diffInfo.changedHunks.get(issue.file);
-			if (!hunks || !isLineChanged(issue.line, hunks)) {
-				issues.splice(i, 1);
-			}
+		// Update file count if locations were reduced
+		if (issue.locations.length < originalCount && originalCount > 1) {
+			issue.file = `(${issue.locations.length} files)`;
+		}
+
+		if (issue.locations.length === 1) {
+			// Unwrap single location back to file/line
+			issue.file = issue.locations[0].file;
+			issue.line = issue.locations[0].line;
 		}
 	}
 }
