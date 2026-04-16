@@ -2,6 +2,7 @@ import { ansi } from "../ansi.js";
 import { validateAgentChain } from "./agent-chain-validator.js";
 import type { RedwoodConfig } from "./config.js";
 import { scanDependencies } from "./deps.js";
+import { type DiffInfo, getDiffInfo, isLineChanged } from "./git.js";
 import { scanMCP } from "./mcp.js";
 import { scanPatterns } from "./patterns.js";
 import { scanSecrets } from "./secrets.js";
@@ -10,6 +11,7 @@ export interface Issue {
 	id: string;
 	type: string;
 	severity: "critical" | "high" | "medium" | "low";
+	confidence?: "high" | "medium" | "low";
 	file: string;
 	line?: number;
 	message: string;
@@ -26,12 +28,30 @@ export interface ScanOptions {
 	severity?: "critical" | "high" | "medium" | "low";
 	bypassIgnore?: boolean;
 	config?: RedwoodConfig;
+	/** Git base ref for diff mode — only scan changed files */
+	diffBase?: string;
+	/** Only flag findings on changed lines (requires diffBase) */
+	newOnly?: boolean;
+	/** Minimum confidence level to include in results */
+	minConfidence?: "high" | "medium" | "low";
 }
 
 export async function scan(repoPath: string, options: ScanOptions = {}): Promise<Issue[]> {
 	// Generate unique IDs for each issue
 	let idCounter = 0;
 	const generateId = () => `issue-${Date.now()}-${idCounter++}`;
+
+	// Resolve diff info if diff mode requested
+	let diffInfo: DiffInfo | null = null;
+	if (options.diffBase) {
+		if (!options.quiet) {
+			console.log(ansi.dim(`  📂 Diff mode: comparing against ${options.diffBase}...`));
+		}
+		diffInfo = getDiffInfo(repoPath, options.diffBase);
+		if (!options.quiet) {
+			console.log(ansi.dim(`  📂 Changed files: ${diffInfo.changedFiles.size}`));
+		}
+	}
 
 	// Use config if provided, otherwise use defaults
 	const config = options.config || {
@@ -48,13 +68,16 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 	const scanners: [string, () => Promise<Issue[]>][] = [];
 
 	if (config.scanners?.secrets !== false) {
-		scanners.push(["Secrets", () => scanSecrets(repoPath)]);
+		scanners.push(["Secrets", () => scanSecrets(repoPath, diffInfo?.changedFiles)]);
 	}
 	if (config.scanners?.dependencies !== false) {
 		scanners.push(["Dependencies", () => scanDependencies(repoPath)]);
 	}
 	if (config.scanners?.patterns !== false) {
-		scanners.push(["Patterns", () => scanPatterns(repoPath, options.bypassIgnore)]);
+		scanners.push([
+			"Patterns",
+			() => scanPatterns(repoPath, options.bypassIgnore, diffInfo?.changedFiles),
+		]);
 	}
 	if (config.scanners?.mcp !== false) {
 		scanners.push(["MCP", () => scanMCP(repoPath)]);
@@ -91,6 +114,26 @@ export async function scan(repoPath: string, options: ScanOptions = {}): Promise
 
 	// Deduplicate issues by type — collapse per-file findings into one issue with locations[]
 	const deduped = deduplicateIssues(allIssues);
+
+	// Apply confidence scoring
+	applyConfidence(deduped);
+
+	// Filter by changed lines if --new-only
+	if (options.newOnly && diffInfo) {
+		filterToNewOnly(deduped, diffInfo);
+	}
+
+	// Filter by minimum confidence
+	if (options.minConfidence) {
+		const confidenceLevel: Record<string, number> = { high: 0, medium: 1, low: 2 };
+		const minLevel = confidenceLevel[options.minConfidence] ?? 2;
+		const filtered = deduped.filter((i) => {
+			const level = confidenceLevel[i.confidence ?? "high"] ?? 2;
+			return level <= minLevel;
+		});
+		deduped.length = 0;
+		deduped.push(...filtered);
+	}
 
 	// Apply max findings limit if configured
 	if (config.maxFindings && deduped.length > config.maxFindings) {
@@ -170,5 +213,109 @@ async function runScanner(
 			console.log(ansi.red(`  ${name}: error - ${error}`));
 		}
 		return [];
+	}
+}
+
+/**
+ * Apply confidence scoring to issues based on contextual signals.
+ *
+ * Rules:
+ * - high: Pattern matched on its own (the default — most patterns are precise)
+ * - medium: Pattern matched but some ambiguity (e.g., generic variable name in sink)
+ * - low: Safe context hit, test file, low-entropy secret, or inline ignore present
+ */
+export function applyConfidence(issues: Issue[]): void {
+	const TEST_FILE_PATTERNS = [
+		/\.test\.[cm]?[jt]sx?$/,
+		/\.spec\.[cm]?[jt]sx?$/,
+		/__tests__\//,
+		/\/tests?\//,
+		/\/spec\//,
+		/\.test\.py$/,
+		/\.test\.rb$/,
+		/test_.*\.py$/,
+		/.*_test\.go$/,
+		/.*_test\.rs$/,
+	];
+
+	const SAFE_CONTEXT_MARKERS = [
+		"__dirname",
+		"__filename",
+		"path.join",
+		"path.resolve",
+		"process.cwd()",
+		"fs.readFileSync",
+		"fs.writeFileSync",
+		"import.meta.url",
+		"new URL(",
+	];
+
+	for (const issue of issues) {
+		// Test files → low confidence
+		if (issue.file && TEST_FILE_PATTERNS.some((p) => p.test(issue.file))) {
+			issue.confidence = "low";
+			continue;
+		}
+
+		// Check for safe context in the matched code or message
+		const contextText = [issue.match, issue.message].filter(Boolean).join(" ");
+		if (SAFE_CONTEXT_MARKERS.some((m) => contextText.includes(m))) {
+			issue.confidence = "low";
+			continue;
+		}
+
+		// Secrets with low entropy hints in the match
+		if (issue.match) {
+			const valueMatch = issue.match.match(/['"]([^'"]+)['"]/);
+			if (valueMatch && valueMatch[1].length < 16) {
+				issue.confidence = "low";
+				continue;
+			}
+		}
+
+		// Default: high confidence
+		issue.confidence = issue.confidence ?? "high";
+	}
+}
+
+/**
+ * Filter issues to only those on changed lines (for --new-only mode).
+ *
+ * For deduped issues with locations[], filters the locations array
+ * and removes issues with no remaining locations.
+ */
+function filterToNewOnly(issues: Issue[], diffInfo: DiffInfo): void {
+	// deduplicateIssues always populates locations[], so we only need the
+	// locations path here.
+	for (let i = issues.length - 1; i >= 0; i--) {
+		const issue = issues[i];
+		if (!issue.locations) continue;
+
+		const originalCount = issue.locations.length;
+
+		// Filter locations to only changed lines
+		issue.locations = issue.locations.filter((loc) => {
+			const hunks = diffInfo.changedHunks.get(loc.file);
+			if (!hunks || hunks.length === 0) return false;
+			if (!loc.line) return true; // File-level finding — keep if file was changed
+			return isLineChanged(loc.line, hunks);
+		});
+
+		// Remove issue if no locations remain
+		if (issue.locations.length === 0) {
+			issues.splice(i, 1);
+			continue;
+		}
+
+		// Update file count if locations were reduced
+		if (issue.locations.length < originalCount && originalCount > 1) {
+			issue.file = `(${issue.locations.length} files)`;
+		}
+
+		if (issue.locations.length === 1) {
+			// Unwrap single location back to file/line
+			issue.file = issue.locations[0].file;
+			issue.line = issue.locations[0].line;
+		}
 	}
 }

@@ -74,7 +74,8 @@ interface BypassInfo {
 
 export async function scanPatterns(
 	repoPath: string,
-	bypassIgnore: boolean = false
+	bypassIgnore: boolean = false,
+	changedFiles?: Set<string>
 ): Promise<Issue[]> {
 	const issues: Issue[] = [];
 	const bypasses: BypassInfo[] = [];
@@ -85,7 +86,12 @@ export async function scanPatterns(
 
 	const files = getFiles(repoPath, repoPath, ignorePatterns);
 
-	for (const file of files) {
+	// Filter to only changed files if diff mode
+	const filesToScan = changedFiles
+		? files.filter((f) => changedFiles.has(relative(repoPath, f)))
+		: files;
+
+	for (const file of filesToScan) {
 		const relPath = relative(repoPath, file);
 		const ext = extname(file);
 

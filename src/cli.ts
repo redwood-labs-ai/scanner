@@ -47,6 +47,15 @@ function getSeverityIcon(severity: string): string {
 	return icons[severity] || "⚪";
 }
 
+function getConfidenceIcon(confidence: string | undefined): string {
+	const icons: Record<string, string> = {
+		high: "🎯",
+		medium: "❓",
+		low: "💭",
+	};
+	return icons[confidence ?? "high"] || "🎯";
+}
+
 function printResults(issues: Issue[]) {
 	if (issues.length === 0) {
 		console.log(ansi.green("\n✅ No security issues found\n"));
@@ -60,10 +69,11 @@ function printResults(issues: Issue[]) {
 	for (const issue of issues) {
 		const sev = issue.severity;
 		const icon = getSeverityIcon(sev);
+		const confIcon = getConfidenceIcon(issue.confidence);
 		const locs = issue.locations || [{ file: issue.file, line: issue.line }];
 
 		console.log(
-			`\n${icon} ${ansi.bold(issue.type)}${locs.length > 1 ? ` (${locs.length} files)` : ""}`
+			`\n${icon} ${ansi.bold(issue.type)}${locs.length > 1 ? ` (${locs.length} files)` : ""} ${confIcon} ${issue.confidence ?? "high"}`
 		);
 		console.log(ansi.dim(`   ${issue.message}`));
 		if (issue.fix) {
@@ -156,6 +166,9 @@ ${ansi.bold("Options:")}
   --verbose          Show detailed output
   --bypass-ignore    Critical mode: include bypassed findings as issues
   --severity <level> Minimum severity to fail on (critical|high|medium|low)
+  --diff <base>      Only scan files changed vs git ref (e.g., main, origin/main)
+  --new-only         Only flag findings on changed lines (requires --diff)
+  --confidence <lvl> Minimum confidence to show (high|medium|low)
   --no-prompt        Suppress LLM fix prompt (for CI/scripted use)
   --help             Show this help message
 `);
@@ -228,6 +241,28 @@ async function runScan(
 
 		const bypassIgnore = options["bypass-ignore"] === true;
 
+		// Diff mode options
+		const diffBase = typeof options.diff === "string" ? options.diff : undefined;
+		const newOnly = options["new-only"] === true;
+		if (newOnly && !diffBase) {
+			console.error(ansi.red("Error: --new-only requires --diff <base>"));
+			process.exit(1);
+		}
+
+		// Confidence filter
+		const CONFIDENCE_LEVELS = new Set(["high", "medium", "low"]);
+		const confidenceVal = options.confidence;
+		if (typeof confidenceVal === "string" && !CONFIDENCE_LEVELS.has(confidenceVal)) {
+			console.error(
+				ansi.red(
+					`Error: Invalid confidence level '${confidenceVal}'. Must be one of: high, medium, low`
+				)
+			);
+			process.exit(1);
+		}
+		const minConfidence =
+			typeof confidenceVal === "string" ? (confidenceVal as "high" | "medium" | "low") : undefined;
+
 		// Determine output format early (needed for quiet mode)
 		const useJson = jsonVal === true || config.output?.json;
 		const useSarif = sarifVal === true || config.output?.sarif;
@@ -242,6 +277,9 @@ async function runScan(
 					: config.severity) as "critical" | "high" | "medium" | "low" | undefined,
 			bypassIgnore,
 			config,
+			diffBase,
+			newOnly,
+			minConfidence,
 		});
 		const effectiveSeverity =
 			typeof severityVal === "string" ? severityVal : config.severity || "critical";
@@ -360,6 +398,9 @@ async function main() {
 							verbose: { type: "boolean" },
 							"bypass-ignore": { type: "boolean" },
 							severity: { type: "string" },
+							diff: { type: "string" },
+							"new-only": { type: "boolean" },
+							confidence: { type: "string" },
 							"no-prompt": { type: "boolean" },
 							help: { type: "boolean" },
 						},
