@@ -253,7 +253,7 @@ function getFiles(dir: string, repoPath: string, ignorePatterns: string[]): stri
 				) {
 					files.push(fullPath);
 				}
-				// Scan config files and templates
+				// Scan config files, templates, and shell scripts
 				else if (
 					[
 						".yml",
@@ -267,11 +267,15 @@ function getFiles(dir: string, repoPath: string, ignorePatterns: string[]): stri
 						".ejs",
 						".twig",
 						".blade.php",
+						".sh",
+						".bash",
+						".zsh",
+						".conf",
 					].includes(ext)
 				) {
 					files.push(fullPath);
 				}
-				// Scan specific config files without extensions
+				// Scan specific config files matched by full name (dotfiles, well-known filenames)
 				else if (
 					[
 						"dockerfile",
@@ -280,6 +284,8 @@ function getFiles(dir: string, repoPath: string, ignorePatterns: string[]): stri
 						".env",
 						".env.local",
 						".env.example",
+						".env.production",
+						".env.development",
 					].includes(name)
 				) {
 					files.push(fullPath);

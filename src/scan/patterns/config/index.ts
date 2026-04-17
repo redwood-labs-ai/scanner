@@ -118,7 +118,7 @@ export default definePatterns([
 	{
 		name: "Docker socket bind-mount (RED-132)",
 		regex:
-			/-\\s+\/var\/run\/docker\.sock[:\s]+\/var\/run\/docker\.sock|-\\s+\/var\/run\/docker\.sock|docker\.sock\\s*:\\s*docker\.sock|source:\\s*["']?\/var\/run\/docker\.sock["']?/gi,
+			/-\s+\/var\/run\/docker\.sock[:\s]+\/var\/run\/docker\.sock|-\s+\/var\/run\/docker\.sock|docker\.sock\s*:\s*docker\.sock|source:\s*["']?\/var\/run\/docker\.sock["']?/gi,
 		severity: "critical",
 		message:
 			"Docker socket (/var/run/docker.sock) is mounted into the container. This grants full Docker Engine API access, allowing container escape and complete host compromise",
@@ -128,7 +128,7 @@ export default definePatterns([
 	{
 		name: "Docker daemon TCP 2375 exposure (CVE-2025-9074)",
 		regex:
-			/tcp:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):2375|:2375[^0-9]|-H\\s+tcp:\/\/[^:]+:2375|DOCKER_HOST\\s*[=:]\\s*["']?tcp:\/\/[^:]+:2375/gi,
+			/tcp:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):2375|:2375[^0-9]|-H\s+tcp:\/\/[^:]+:2375|DOCKER_HOST\s*[=:]\s*["']?tcp:\/\/[^:]+:2375/gi,
 		severity: "critical",
 		message:
 			"Docker daemon exposed on TCP port 2375 without TLS/authentication. As seen in CVE-2025-9074, this allows unauthenticated access to the Docker Engine API, enabling remote code execution and host compromise",
