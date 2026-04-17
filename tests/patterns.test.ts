@@ -303,6 +303,108 @@ describe("Pattern Scanner", () => {
 		});
 	});
 
+	describe(".env Secret Patterns (RED-162)", () => {
+		const byName = (name: string) => {
+			const p = DANGEROUS_PATTERNS.find((x) => x.name === name);
+			assert.ok(p, `Should have pattern "${name}"`);
+			return p as Pattern;
+		};
+		const matches = (p: Pattern, s: string) => {
+			const r = new RegExp(p.regex.source, p.regex.flags);
+			return r.test(s);
+		};
+
+		it("AWS pattern matches access key ID and secret with /+= chars", () => {
+			const p = byName(".env file with AWS access keys (RED-162)");
+			assert.ok(matches(p, "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"), "access key id");
+			assert.ok(
+				matches(p, "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"),
+				"secret with / chars"
+			);
+			assert.ok(!matches(p, "AWS_REGION=us-east-1"), "region should not match");
+		});
+
+		it("Stripe pattern matches sk_, rk_, and whsec_ prefixes", () => {
+			const p = byName(".env file with Stripe payment key (RED-162)");
+			assert.ok(matches(p, "STRIPE_SECRET_KEY=sk_live_aBcDeFgHiJkLmNoPqRsTuVwX"), "sk_ secret");
+			assert.ok(matches(p, "STRIPE_SECRET_KEY=rk_test_aBcDeFgHiJkLmNoPqRsTuVwX"), "rk_ restricted");
+			assert.ok(
+				matches(p, "STRIPE_WEBHOOK_SECRET=whsec_aBcDeFgHiJkLmNoPqRsTuVwX"),
+				"whsec_ webhook"
+			);
+			assert.ok(
+				!matches(p, "STRIPE_SECRET_KEY=pk_live_publishable"),
+				"publishable should not match"
+			);
+		});
+
+		it("Google Cloud pattern matches AIza API keys and service account JSON", () => {
+			const p = byName(".env file with Google Cloud credentials (RED-162)");
+			assert.ok(
+				matches(p, "GOOGLE_API_KEY=AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ1234567"),
+				"AIza API key"
+			);
+			assert.ok(
+				matches(p, 'SERVICE_ACCOUNT_JSON={"project_id":"x","private_key":"y"}'),
+				"service account JSON"
+			);
+			assert.ok(!matches(p, "GOOGLE_API_KEY=your_api_key_here"), "non-AIza value should not match");
+		});
+
+		it("GitHub token pattern matches ghp_, ghs_, gho_, ghu_, ghr_, github_pat_", () => {
+			const p = byName(".env file with GitHub token (RED-162)");
+			assert.ok(matches(p, "GITHUB_TOKEN=ghp_" + "a".repeat(30)), "ghp_");
+			assert.ok(matches(p, "GITHUB_TOKEN=ghs_" + "a".repeat(30)), "ghs_");
+			assert.ok(matches(p, "GITHUB_TOKEN=gho_" + "a".repeat(30)), "gho_");
+			assert.ok(matches(p, "GITHUB_TOKEN=ghu_" + "a".repeat(30)), "ghu_");
+			assert.ok(matches(p, "GITHUB_TOKEN=ghr_" + "a".repeat(30)), "ghr_");
+			assert.ok(
+				matches(p, "GITHUB_TOKEN=github_pat_" + "a".repeat(22) + "_" + "b".repeat(59)),
+				"github_pat_"
+			);
+			assert.ok(!p.fix.includes("sboms"), "fix text should not contain 'sboms' typo");
+		});
+
+		it("Generic secret pattern suppresses placeholders but matches real values", () => {
+			const p = byName(".env file with generic secret/token/key (RED-162)");
+			assert.ok(matches(p, "API_KEY=7f3a9b2c1d8e4f5a6b7c8d9e0f1a2b3c"), "real 32-char hex");
+			assert.ok(!matches(p, "API_KEY=your_api_key_here_blah_blah"), "your_ placeholder");
+			assert.ok(!matches(p, "API_KEY=placeholder_value_for_dev"), "placeholder value");
+			assert.ok(!matches(p, "API_KEY=changeme"), "short value below threshold");
+		});
+
+		it("DB password pattern skips ${VAR} references", () => {
+			const p = byName(".env file with generic password/credentials (RED-162)");
+			assert.ok(matches(p, "DB_PASSWORD=hunter2supersecret"), "real password");
+			assert.ok(!matches(p, "DB_PASSWORD=${PROD_DB_PASSWORD}"), "env var reference");
+			assert.ok(!matches(p, "DB_PASSWORD=<redacted>"), "angle-bracket placeholder");
+		});
+
+		it("Azure pattern separates client secret from IDs by severity", () => {
+			const secretP = byName(".env file with Azure client secret (RED-162)");
+			const idP = byName(".env file with Azure subscription/tenant/client IDs (RED-162)");
+			assert.strictEqual(secretP.severity, "high", "CLIENT_SECRET is high severity");
+			assert.strictEqual(idP.severity, "medium", "client/tenant/subscription IDs are medium");
+			assert.ok(matches(idP, "AZURE_CLIENT_ID=12345678-1234-1234-1234-123456789012"), "client id");
+			assert.ok(matches(secretP, "AZURE_CLIENT_SECRET=abc123xyz789supersecret"), "client secret");
+			assert.ok(
+				!matches(secretP, "AZURE_CLIENT_ID=12345678-1234-1234-1234-123456789012"),
+				"high-severity pattern should not match client id"
+			);
+		});
+
+		it("all RED-162 patterns include .env dotfile variants in fileTypes", () => {
+			const red162 = DANGEROUS_PATTERNS.filter((p) => p.name?.includes("(RED-162)"));
+			assert.ok(red162.length >= 10, "should have at least 10 RED-162 patterns");
+			const required = [".env", ".env.local", ".env.production", ".env.development"];
+			for (const p of red162) {
+				for (const ft of required) {
+					assert.ok(p.fileTypes?.includes(ft), `"${p.name}" should list fileType "${ft}"`);
+				}
+			}
+		});
+	});
+
 	describe("Edge Cases", () => {
 		it("should handle empty pattern list gracefully", () => {
 			const emptyPatterns: Pattern[] = [];
