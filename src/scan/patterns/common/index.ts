@@ -186,7 +186,7 @@ export default definePatterns([
 	{
 		name: "JWT token in URL query parameter",
 		regex:
-			/[?&](?:token|jwt|auth|access[_-]?token|id[_-]?token|bearer)\\s*=\\s*[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]*/g,
+			/[?&](?:token|jwt|auth|access[_-]?token|id[_-]?token|bearer)\s*=\s*[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*/g,
 		severity: "high",
 		message:
 			"JWT token in URL query parameter - leaks in server logs, browser history, Referer headers, and analytics",

@@ -405,6 +405,58 @@ describe("Pattern Scanner", () => {
 		});
 	});
 
+	describe("Previously broken regexes (double-escape fix)", () => {
+		const byName = (name: string) => {
+			const p = DANGEROUS_PATTERNS.find((x) => x.name === name);
+			assert.ok(p, `Should have pattern "${name}"`);
+			return p as Pattern;
+		};
+		const matches = (p: Pattern, s: string) => {
+			const r = new RegExp(p.regex.source, p.regex.flags);
+			return r.test(s);
+		};
+		const hasDoubleEscape = (p: Pattern) => /\\\\[a-zA-Z{[(]/.test(p.regex.source);
+
+		it("JWT-in-URL pattern matches a real JWT in a query string", () => {
+			const p = byName("JWT token in URL query parameter");
+			assert.ok(!hasDoubleEscape(p), "regex source should not contain doubled escapes");
+			assert.ok(
+				matches(p, "/api?token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.abc123"),
+				"should match ?token=<jwt>"
+			);
+			assert.ok(matches(p, "/x?foo=1&bearer=aaa.bbb.ccc"), "should match &bearer=<jwt>");
+			assert.ok(!matches(p, "/api?token=notajwt"), "non-JWT value should not match");
+		});
+
+		it("Docker socket bind-mount (RED-132) matches common mount syntaxes", () => {
+			const p = byName("Docker socket bind-mount (RED-132)");
+			assert.ok(!hasDoubleEscape(p), "regex source should not contain doubled escapes");
+			assert.ok(
+				matches(p, "-  /var/run/docker.sock:/var/run/docker.sock"),
+				"compose short-form mount"
+			);
+			assert.ok(matches(p, "source: /var/run/docker.sock"), "compose long-form source");
+			assert.ok(matches(p, "docker.sock : docker.sock"), "k/v style mount");
+		});
+
+		it("Docker daemon TCP 2375 matches -H and DOCKER_HOST variants", () => {
+			const p = byName("Docker daemon TCP 2375 exposure (CVE-2025-9074)");
+			assert.ok(!hasDoubleEscape(p), "regex source should not contain doubled escapes");
+			assert.ok(matches(p, "tcp://0.0.0.0:2375"), "bare tcp URL");
+			assert.ok(matches(p, "-H tcp://remote-host:2375"), "-H flag variant");
+			assert.ok(matches(p, "DOCKER_HOST=tcp://foo:2375"), "DOCKER_HOST env variant");
+		});
+
+		it("no pattern source contains doubled backslash-escapes", () => {
+			const offenders = DANGEROUS_PATTERNS.filter(hasDoubleEscape).map((p) => p.name);
+			assert.deepStrictEqual(
+				offenders,
+				[],
+				`Patterns with doubled escapes (likely broken): ${offenders.join(", ")}`
+			);
+		});
+	});
+
 	describe("Edge Cases", () => {
 		it("should handle empty pattern list gracefully", () => {
 			const emptyPatterns: Pattern[] = [];
