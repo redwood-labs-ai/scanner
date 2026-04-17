@@ -13,7 +13,7 @@
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { extname, join, relative } from "node:path";
+import { basename, extname, join, relative } from "node:path";
 import type { Issue } from "./engine.js";
 import { DEFAULT_IGNORE_DIRS, isIgnored, loadRedwoodIgnore, shouldSkipDir } from "./ignore.js";
 import { DANGEROUS_PATTERNS, patternStats } from "./patterns/index.js";
@@ -94,6 +94,7 @@ export async function scanPatterns(
 	for (const file of filesToScan) {
 		const relPath = relative(repoPath, file);
 		const ext = extname(file);
+		const name = basename(file).toLowerCase();
 
 		try {
 			const content = readFileSync(file, "utf-8");
@@ -109,8 +110,10 @@ export async function scanPatterns(
 			const ignoredLines = extractInlineIgnores(content);
 
 			for (const pattern of DANGEROUS_PATTERNS) {
-				// Skip if pattern is for specific file types and this isn't one
-				if (pattern.fileTypes && !pattern.fileTypes.includes(ext)) {
+				// Skip if pattern is for specific file types and this isn't one.
+				// Match on extension (e.g., ".js") OR full basename for dotfile configs
+				// like ".env"/".env.local" where Node's extname() returns "" or ".local".
+				if (pattern.fileTypes && !pattern.fileTypes.some((ft) => ft === ext || ft === name)) {
 					continue;
 				}
 
