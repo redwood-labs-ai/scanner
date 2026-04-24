@@ -25,7 +25,7 @@ export default definePatterns([
 	{
 		name: "Hardcoded database credentials",
 		regex:
-			/(DATABASE_URL|POSTGRES_PASSWORD|MYSQL_PASSWORD|REDIS_PASSWORD|MONGO_URI)\s*[:=]\s*['"]?[^${\s][^'"}\s]+['"]?/gi,
+			/(DATABASE_URL|POSTGRES_PASSWORD|MYSQL_PASSWORD|REDIS_PASSWORD|MONGO_URI)\s*[:=]\s*['"]?(?!localdev|localhost|development|dev$|test$|testing|staging|docker|changeme|password$|secret$|admin$|placeholder|demo$)[^${\s][^'"}\s]+['"]?/gi,
 		severity: "high",
 		message: "Database credentials appear to be hardcoded",
 		fix: "Use environment variables or secrets management for database credentials",
@@ -118,7 +118,7 @@ export default definePatterns([
 	{
 		name: "Docker socket bind-mount (RED-132)",
 		regex:
-			/-\\s+\/var\/run\/docker\.sock[:\s]+\/var\/run\/docker\.sock|-\\s+\/var\/run\/docker\.sock|docker\.sock\\s*:\\s*docker\.sock|source:\\s*["']?\/var\/run\/docker\.sock["']?/gi,
+			/-\s+\/var\/run\/docker\.sock[:\s]+\/var\/run\/docker\.sock|-\s+\/var\/run\/docker\.sock|docker\.sock\s*:\s*docker\.sock|source:\s*["']?\/var\/run\/docker\.sock["']?/gi,
 		severity: "critical",
 		message:
 			"Docker socket (/var/run/docker.sock) is mounted into the container. This grants full Docker Engine API access, allowing container escape and complete host compromise",
@@ -128,11 +128,110 @@ export default definePatterns([
 	{
 		name: "Docker daemon TCP 2375 exposure (CVE-2025-9074)",
 		regex:
-			/tcp:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):2375|:2375[^0-9]|-H\\s+tcp:\/\/[^:]+:2375|DOCKER_HOST\\s*[=:]\\s*["']?tcp:\/\/[^:]+:2375/gi,
+			/tcp:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):2375|:2375[^0-9]|-H\s+tcp:\/\/[^:]+:2375|DOCKER_HOST\s*[=:]\s*["']?tcp:\/\/[^:]+:2375/gi,
 		severity: "critical",
 		message:
 			"Docker daemon exposed on TCP port 2375 without TLS/authentication. As seen in CVE-2025-9074, this allows unauthenticated access to the Docker Engine API, enabling remote code execution and host compromise",
 		fix: "Disable unauthenticated Docker API exposure. Use TLS certificates for remote API access. Restrict network access to port 2375 via firewall rules. Update Docker Desktop to version 4.44.3+ which fixes CVE-2025-9074",
 		fileTypes: [".yml", ".yaml", ".json", ".env", ".sh", ".conf"],
+	},
+	{
+		name: ".env file with AWS access keys (RED-162)",
+		regex:
+			/\b(?:AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)\s*[:=]\s*['"]?[A-Za-z0-9/+=]{16,}['"]?/gi,
+		severity: "critical",
+		message:
+			"AWS credentials found in .env file. AWS access keys committed to version control can lead to full account compromise, unauthorized resource access, and significant financial damage",
+		fix: "Remove hardcoded AWS credentials immediately. Use IAM roles, AWS Secrets Manager, SSM Parameter Store, or instance profiles for authentication. Rotate any potentially exposed keys",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
+	},
+	{
+		name: ".env file with Slack webhook/bot token (RED-162)",
+		regex:
+			/\b(?:SLACK_WEBHOOK_URL|SLACK_BOT_TOKEN|SLACK_SIGNING_SECRET)\s*[:=]\s*['"]?(?:https?:\/\/hooks\.slack\.com\/services\/|xox[abeopsr]-)[^'"]{10,}['"]?/gi,
+		severity: "high",
+		message:
+			"Slack webhook URL or bot token found in .env file. Exposed Slack credentials can be used to send unauthorized messages, exfiltrate data, or disrupt team communications",
+		fix: "Remove Slack credentials from .env files. Use CI/CD secrets management or environment variable injection at runtime. Rotate any exposed tokens immediately",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
+	},
+	{
+		name: ".env file with Stripe payment key (RED-162)",
+		regex:
+			/\b(?:STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|STRIPE_SIGNING_SECRET)\s*[:=]\s*['"]?(?:sk_|rk_|whsec_)[A-Za-z0-9_]{20,}['"]?/gi,
+		severity: "critical",
+		message:
+			"Stripe payment secret key found in .env file. Exposed Stripe keys can lead to unauthorized financial transactions, PCI DSS compliance violations, and customer data exposure",
+		fix: "Never commit Stripe secrets to version control. Use Stripe's environment variable injection in CI/CD. Rotate any exposed keys immediately. Use test keys during development",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
+	},
+	{
+		name: ".env file with generic secret/token/key (RED-162)",
+		regex:
+			/\b(?:SECRET|TOKEN|API_KEY|PRIVATE_KEY|SIGNING_SECRET|ENCRYPTION_KEY|AUTH_KEY)\s*[:=]\s*['"]?(?!(?:secret|password|admin|root|123456|changeme|default|test|example|placeholder|your_|change_this|xxx|todo))[a-zA-Z0-9/+=_-]{20,}/gi,
+		severity: "high",
+		message:
+			"Generic secret token/key with a real value (20+ chars, not a placeholder) found in .env file. Long non-placeholder values indicate actual credentials that should not be committed",
+		fix: "Replace with environment variable references (${VAR_NAME}). Rotate any potentially exposed keys. Use a secrets manager like HashiCorp Vault, AWS Secrets Manager, or Doppler",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
+	},
+	{
+		name: ".env file with GitHub token (RED-162)",
+		regex:
+			/\b(?:GITHUB_TOKEN|GITHUB_API_KEY|GH_TOKEN|GH_ENTERPRISE_TOKEN)\s*[:=]\s*['"]?(?:gh[pso]_[A-Za-z0-9]{20,}|ghu_[A-Za-z0-9]{20,}|ghr_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9]{20,}_[A-Za-z0-9]{20,})['"]?/gi,
+		severity: "critical",
+		message:
+			"GitHub personal access token found in .env file. Exposed tokens can lead to unauthorized repository access, code injection, supply chain attacks, and data exfiltration",
+		fix: "Rotate the exposed GitHub token immediately via GitHub UI. Use GitHub Apps with fine-grained permissions instead of PATs. Store in a secrets manager and consider GitHub's token rotation APIs",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
+	},
+	{
+		name: ".env file with Google Cloud credentials (RED-162)",
+		regex:
+			/\b(?:GOOGLE_SERVICE_ACCOUNT_KEY|GOOGLE_API_KEY|GOOGLE_CLIENT_SECRET|SERVICE_ACCOUNT_JSON)\s*[:=]\s*['"]?(?:\{[\s\S]*?(?:"project_id"|"private_key")|AIza[A-Za-z0-9_-]{35})['"]?/gs,
+		severity: "critical",
+		message:
+			"Google Cloud credentials found in .env file. Service account keys and API keys can provide full access to GCP resources, billing, and data",
+		fix: "Use Google Cloud Workload Identity or instance metadata instead of service account keys. Never commit keys to version control. Use short-lived credentials and least-privilege service accounts",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
+	},
+	{
+		name: ".env file with generic password/credentials (RED-162)",
+		regex:
+			/\b(?:DB_PASSWORD|DATABASE_PASSWORD|MYSQL_ROOT_PASSWORD|POSTGRES_PASSWORD|MONGO_PASSWORD|REDIS_PASSWORD|RABBITMQ_DEFAULT_PASS|ADMIN_PASSWORD|ROOT_PASSWORD|JWT_SECRET|SESSION_SECRET|COOKIE_SECRET)\s*[:=]\s*['"]?(?!\$|<|localdev|localhost|development|docker|changeme|password|placeholder|demo|example|test|staging|admin|root|secret|dev|your_|xxx|todo|redis|postgres|mongo|mysql|change_this|123456)[^'"\s]{8,}['"]?/gi,
+		severity: "high",
+		message:
+			"Hardcoded database or session password found in .env file. Credentials should never be stored in version control",
+		fix: "Use environment variable references (${DB_PASSWORD}) or a secrets manager. For local development, use empty values or placeholders. Never commit real passwords",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
+	},
+	{
+		name: ".env file with Docker registry credentials (RED-162)",
+		regex:
+			/\b(?:DOCKER_PASSWORD|REGISTRY_PASSWORD|DOCKER_HUB_PASSWORD|HARBOR_PASSWORD)\s*[:=]\s*['"]?(?!\$|<|localdev|localhost|development|docker|changeme|password|placeholder|demo|example|test|staging|admin|root|dev|your_|xxx|todo|change_this|123456)[^'"\s]{6,}['"]?/gi,
+		severity: "high",
+		message:
+			"Docker registry credentials found in .env file. Exposed credentials can allow unauthorized access to container images and supply chain attacks",
+		fix: "Use Docker login via CI/CD secrets, not hardcoded credentials. Consider using Docker content trust and signature verification",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
+	},
+	{
+		name: ".env file with Azure client secret (RED-162)",
+		regex: /\bAZURE_CLIENT_SECRET\s*[:=]\s*['"]?(?!\$|<)[^'"\s]{8,}['"]?/gi,
+		severity: "high",
+		message:
+			"Azure client secret found in .env file. Exposed secrets can lead to unauthorized access to cloud resources and billing abuse",
+		fix: "Use managed identities, Azure Key Vault, or workload identity. Never commit Azure secrets",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
+	},
+	{
+		name: ".env file with Azure subscription/tenant/client IDs (RED-162)",
+		regex:
+			/\b(?:AZURE_TENANT_ID|AZURE_SUBSCRIPTION_ID|AZURE_CLIENT_ID)\s*[:=]\s*['"]?(?!\$|<)[^'"\s]{8,}['"]?/gi,
+		severity: "medium",
+		message:
+			"Azure tenant, subscription, or client ID in .env file. While not secret, these identifiers can aid reconnaissance",
+		fix: "Use environment variable references for configuration portability",
+		fileTypes: [".env", ".env.local", ".env.production", ".env.development"],
 	},
 ]);

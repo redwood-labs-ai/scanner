@@ -82,6 +82,13 @@ export default definePatterns([
 		message: "File open with potentially user-controlled path",
 		fix: "Use os.path.basename() or validate path does not contain ..",
 		fileTypes: [".py"],
+		safeContext: [
+			"os.path.dirname(__file__)",
+			"pathlib.Path",
+			"BASE_DIR",
+			"settings.",
+			"Path(__file__)",
+		],
 	},
 	{
 		name: "XXE via XML parsing",

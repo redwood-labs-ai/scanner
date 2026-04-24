@@ -4,7 +4,7 @@ Security scanner for AI-native codebases. Catches vulnerabilities, dangerous pat
 
 ## Features
 
-- **Pattern Detection** — 91 known security patterns across JS, TS, Python, Rust, Go, Ruby, PHP
+- **Pattern Detection** — 123 known security patterns across JS, TS, Python, Rust, Go, Ruby, PHP, C/C++, and shell
 - **Secret Scanning** — API keys, tokens, passwords, private keys
 - **MCP Security** — Validates MCP server configurations and tool chains
 - **Dependency Audit** — Checks for known vulnerabilities
@@ -58,6 +58,21 @@ redwood scan ./my-repo --no-prompt
 ```bash
 # Fail on medium or higher severity
 redwood scan ./my-repo --severity medium
+```
+
+### Diff-Only Scanning
+```bash
+# Only scan files changed vs main
+redwood scan ./my-repo --diff main
+
+# Only flag findings on changed lines (great for PR checks)
+redwood scan ./my-repo --diff origin/main --new-only
+```
+
+### Confidence Threshold
+```bash
+# Hide low-confidence findings
+redwood scan ./my-repo --confidence medium
 ```
 
 ## Programmatic Usage
