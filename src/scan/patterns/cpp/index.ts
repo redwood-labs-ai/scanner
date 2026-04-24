@@ -1,0 +1,77 @@
+import { definePatterns } from "../types.js";
+
+export default definePatterns([
+	{
+		name: "Buffer overflow via gets()",
+		regex: /gets\s*\(/g,
+		severity: "critical",
+		message: "gets() is unsafe and always causes buffer overflow - use fgets() instead",
+		fix: "Replace gets() with fgets(buffer, sizeof(buffer), stdin)",
+		fileTypes: [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"],
+	},
+	{
+		name: "Buffer overflow via strcpy()",
+		regex: /strcpy\s*\(/g,
+		severity: "critical",
+		message: "strcpy() can cause buffer overflow - use strncpy() or strlcpy()",
+		fix: "Use strncpy(dest, src, sizeof(dest) - 1) and ensure null termination",
+		fileTypes: [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"],
+	},
+	{
+		name: "Buffer overflow via sprintf()",
+		regex: /sprintf\s*\(/g,
+		severity: "high",
+		message: "sprintf() can cause buffer overflow - use snprintf()",
+		fix: "Use snprintf(buf, sizeof(buf), format, ...)",
+		fileTypes: [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"],
+	},
+	{
+		name: "Buffer overflow via strcat()",
+		regex: /strcat\s*\(/g,
+		severity: "high",
+		message: "strcat() can cause buffer overflow - use strncat() or strlcat()",
+		fix: "Use strncat(dest, src, sizeof(dest) - strlen(dest) - 1)",
+		fileTypes: [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"],
+	},
+	{
+		name: "Command injection via system()",
+		regex: /system\s*\(/g,
+		severity: "critical",
+		message: "system() execution may allow command injection if input is not validated",
+		fix: "Validate and whitelist all inputs, use execve() with argument arrays instead",
+		fileTypes: [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"],
+	},
+	{
+		name: "Command injection via popen()",
+		regex: /popen\s*\(/g,
+		severity: "critical",
+		message: "popen() execution may allow command injection if input is not validated",
+		fix: "Validate and whitelist all inputs, use pipes with fork/exec instead",
+		fileTypes: [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"],
+	},
+	{
+		name: "Command injection via system/popen with string concatenation",
+		regex: /(?:system|popen)\s*\([^)]*\+/g,
+		severity: "critical",
+		message:
+			"Command execution with string concatenation is highly likely to allow command injection",
+		fix: "Never concatenate user input into shell commands; use execve() with argument arrays",
+		fileTypes: [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"],
+	},
+	{
+		name: "Format string vulnerability",
+		regex: /printf\s*\(\s*\w+|fprintf\s*\([^,]+,\s*\w+|sprintf\s*\([^,]+,\s*\w+/g,
+		severity: "high",
+		message: "Format string with user-controlled variable may allow format string attack",
+		fix: 'Use printf("%s", user_input) instead of printf(user_input)',
+		fileTypes: [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"],
+	},
+	{
+		name: "Unsafe realloc usage",
+		regex: /realloc\s*\([^)]*\*\s*\w+/g,
+		severity: "medium",
+		message: "realloc() with multiplication may cause integer overflow leading to heap corruption",
+		fix: "Check for integer overflow before realloc, use safe size calculations",
+		fileTypes: [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"],
+	},
+]);

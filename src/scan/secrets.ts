@@ -8,6 +8,122 @@ import {
 	loadRedwoodIgnore,
 } from "./ignore.js";
 
+/**
+ * Common development/test placeholder values that should never be flagged
+ * as real credentials. Matched case-insensitively.
+ */
+const COMMON_DEV_VALUES = new Set([
+	// Generic placeholders
+	"password",
+	"passwd",
+	"changeme",
+	"secret",
+	"token",
+	"api_key",
+	"apikey",
+	"placeholder",
+	"example",
+	"replace_me",
+	"replace-me",
+	"your_secret",
+	"your_password",
+	"your_key",
+	"insert_here",
+	"todo",
+	"null",
+	"undefined",
+	// Local development
+	"localdev",
+	"localhost",
+	"development",
+	"dev",
+	"test",
+	"testing",
+	"staging",
+	"debug",
+	"docker",
+	"postgres",
+	"mysql",
+	"redis",
+	"mongo",
+	"admin",
+	"root",
+	"user",
+	"guest",
+	"demo",
+	// Common weak/test values
+	"test123",
+	"123456",
+	"12345678",
+	"qwerty",
+	"abc123",
+	"letmein",
+	"trustno1",
+	"iloveyou",
+	"password1",
+	"password123",
+	"admin123",
+	"root123",
+	"default",
+	"passw0rd",
+	// Keyboard patterns
+	"qwertyuiop",
+	"asdfghjkl",
+	"zxcvbnm",
+	"qweasd",
+	"qweasdzxc",
+]);
+
+/**
+ * Calculate Shannon entropy of a string (bits per character).
+ * Real secrets typically score >3.5; common words score <3.0.
+ */
+function shannonEntropy(value: string): number {
+	if (!value.length) return 0;
+	const freq = new Map<string, number>();
+	for (const ch of value) freq.set(ch, (freq.get(ch) || 0) + 1);
+	let entropy = 0;
+	for (const count of Array.from(freq.values())) {
+		const p = count / value.length;
+		entropy -= p * Math.log2(p);
+	}
+	return entropy;
+}
+
+/**
+ * Check if a value looks like a real secret vs a dev/test placeholder.
+ * Returns true if the value should be SKIPPED (i.e., it's not a real secret).
+ */
+function isDevPlaceholder(value: string): boolean {
+	const lower = value.toLowerCase();
+
+	// Exact match against known dev values
+	if (COMMON_DEV_VALUES.has(lower)) return true;
+
+	// All same character (e.g., "aaaaaaaa", "00000000")
+	if (/^(.)\1+$/.test(lower)) return true;
+
+	// Purely numeric sequences like "12345678"
+	if (/^\d+$/.test(lower)) return true;
+
+	// Keyboard walks
+	if (/^(qwerty|asdf|zxcv)/i.test(lower)) return true;
+
+	// Low entropy — real secrets need >3.0 bits/char
+	if (shannonEntropy(value) < 3.0) return true;
+
+	return false;
+}
+
+/**
+ * Extract the value portion from a secret pattern match.
+ * Handles patterns like: password: 'value', api_key = "value"
+ */
+function extractQuotedValue(match: string): string | null {
+	const valueMatch = match.match(/['"]([^'"]+)['"]/);
+	return valueMatch ? valueMatch[1] : null;
+}
+
 const SECRET_PATTERNS = [
 	{
 		name: "AWS Access Key",
@@ -75,7 +191,7 @@ const SECRET_PATTERNS = [
 	},
 ];
 
-export async function scanSecrets(repoPath: string): Promise<Issue[]> {
+export async function scanSecrets(repoPath: string, changedFiles?: Set<string>): Promise<Issue[]> {
 	const issues: Issue[] = [];
 
 	// Load .redwoodignore patterns
@@ -84,7 +200,12 @@ export async function scanSecrets(repoPath: string): Promise<Issue[]> {
 
 	const files = getFiles(repoPath, repoPath, ignorePatterns);
 
-	for (const file of files) {
+	// Filter to only changed files if diff mode
+	const filesToScan = changedFiles
+		? files.filter((f) => changedFiles.has(relative(repoPath, f)))
+		: files;
+
+	for (const file of filesToScan) {
 		const relPath = relative(repoPath, file);
 
 		try {
@@ -103,6 +224,12 @@ export async function scanSecrets(repoPath: string): Promise<Issue[]> {
 
 					// Skip if context requirement not met
 					if (pattern.context && !pattern.context.test(line)) {
+						continue;
+					}
+
+					// Skip common dev/test placeholder values
+					const value = extractQuotedValue(match[0]);
+					if (value && isDevPlaceholder(value)) {
 						continue;
 					}
 

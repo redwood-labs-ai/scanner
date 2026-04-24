@@ -154,4 +154,43 @@ export default definePatterns([
 		fix: "Use IMDSv2 with required session tokens (X-aws-ec2-metadata-token header). Restrict network access to IMDS endpoint. Ensure code doesn't fetch metadata from arbitrary sources",
 		fileTypes: [".go", ".py", ".js", ".ts", ".java", ".rb"],
 	},
+	{
+		name: "GCP metadata server access",
+		regex:
+			/metadata\.google\.internal|169\.254\.169\.254\/computeMetadata|googleapis\.com\/compute\/v1\/projects\/.*\/zones\/.*\/instances\/.*\/metadata/gi,
+		severity: "high",
+		message:
+			"Access to Google Cloud Platform (GCP) metadata server. If used without proper authentication headers (Metadata-Flavor: Google), this can lead to service account credential theft",
+		fix: "Use restricted service accounts with minimal permissions. Avoid accessing metadata server from untrusted code. Validate Metadata-Flavor header when making metadata requests",
+		fileTypes: [".go", ".py", ".js", ".ts", ".java", ".rb"],
+	},
+	{
+		name: "Azure instance metadata access",
+		regex:
+			/169\.254\.169\.254\/metadata\/instance|168\.63\.129\.16|azure\.com\/providers\/Microsoft\.Compute\/locations\/operations/gi,
+		severity: "high",
+		message:
+			"Access to Azure Instance Metadata Service. Without the required Azure-Portal-Service header, this can expose managed identity credentials and lead to Azure resource compromise",
+		fix: "Use managed identities with least privilege. Require Azure-Portal-Service header for metadata requests. Implement network security groups to restrict metadata access",
+		fileTypes: [".go", ".py", ".js", ".ts", ".java", ".rb", ".cs"],
+	},
+	{
+		name: "DigitalOcean droplet metadata access",
+		regex: /169\.254\.169\.254\/metadata\/v1|metadata\.digitalocean\.com/gi,
+		severity: "high",
+		message:
+			"Access to DigitalOcean droplet metadata service. Can expose droplet credentials, SSH keys, and other sensitive configuration",
+		fix: "Use DigitalOcean App Platform or restricted metadata access. Implement firewall rules to block unauthorized metadata requests",
+		fileTypes: [".go", ".py", ".js", ".ts", ".java", ".rb"],
+	},
+	{
+		name: "JWT token in URL query parameter",
+		regex:
+			/[?&](?:token|jwt|auth|access[_-]?token|id[_-]?token|bearer)\s*=\s*[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*/g,
+		severity: "high",
+		message:
+			"JWT token in URL query parameter - leaks in server logs, browser history, Referer headers, and analytics",
+		fix: "Pass JWT tokens in Authorization headers (Bearer token) instead of URL parameters. If URL passing is required, use POST body with HTTPS",
+		fileTypes: [".js", ".ts", ".py", ".go", ".java", ".rb", ".php", ".cs", ".rs"],
+	},
 ]);

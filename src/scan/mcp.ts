@@ -188,27 +188,20 @@ function checkToolDefinitions(content: string, file: string): Issue[] {
 
 	// Look for tool definitions with concerning descriptions
 	const toolDefPattern = /(?:name|tool_name|toolName)\s*[:=]\s*['"]([^'"]+)['"]/g;
-	const dangerousToolNames = [
-		"execute",
-		"exec",
-		"run_command",
-		"shell",
-		"eval",
-		"file_write",
-		"write_file",
-		"delete",
-		"remove",
-		"rm",
-		"admin",
-		"sudo",
-		"root",
-		"system",
-	];
+	// Tool names that are dangerous as standalone names
+	const dangerousExact = new Set(["exec", "shell", "eval", "sudo", "su", "rm"]);
+
+	// Tool name stems that are dangerous when they start a compound name
+	// (e.g., "exec_command", "shell_run", "run_arbitrary")
+	const dangerousPrefixes = ["exec_", "shell_", "eval_", "run_command", "run_arbitrary"];
 
 	let match;
 	while ((match = toolDefPattern.exec(content)) !== null) {
 		const toolName = match[1].toLowerCase();
-		if (dangerousToolNames.some((dangerous) => toolName.includes(dangerous))) {
+		if (
+			dangerousExact.has(toolName) ||
+			dangerousPrefixes.some((prefix) => toolName.startsWith(prefix))
+		) {
 			issues.push({
 				id: `mcp-tool-${toolName}`,
 				type: "MCP: Dangerous Tool Name",

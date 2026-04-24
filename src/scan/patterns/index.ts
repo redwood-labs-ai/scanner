@@ -8,6 +8,7 @@
 // Cross-language and config patterns
 import commonPatterns from "./common/index.js";
 import configPatterns from "./config/index.js";
+import cppPatterns from "./cpp/index.js";
 import goPatterns from "./go/index.js";
 import javascriptPatterns from "./javascript/index.js";
 import phpPatterns from "./php/index.js";
@@ -27,6 +28,7 @@ export const DANGEROUS_PATTERNS: Pattern[] = [
 	...goPatterns,
 	...rubyPatterns,
 	...phpPatterns,
+	...cppPatterns,
 	...commonPatterns,
 	...configPatterns,
 ];
@@ -45,6 +47,7 @@ export const patternStats = {
 		go: goPatterns.length,
 		ruby: rubyPatterns.length,
 		php: phpPatterns.length,
+		cpp: cppPatterns.length,
 		common: commonPatterns.length,
 		config: configPatterns.length,
 	},

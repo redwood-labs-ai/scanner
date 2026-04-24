@@ -19,7 +19,8 @@ export default definePatterns([
 	},
 	{
 		name: "SQL template literal injection",
-		regex: /`[\s\S]{0,20}(SELECT|INSERT|UPDATE|DELETE)[\s\S]{0,50}\$\{/gi,
+		regex:
+			/`[\s\S]{0,20}\b(?:SELECT|INSERT|UPDATE|DELETE|DROP|WHERE|FROM|INTO|VALUES)\b[\s\S]{0,50}\$\{/gi,
 		severity: "critical",
 		message: "SQL query built with template literal is vulnerable to injection",
 		fix: "Use parameterized queries with prepared statements",
@@ -32,6 +33,7 @@ export default definePatterns([
 		message: "Fetch with potentially user-controlled URL",
 		fix: "Validate and whitelist allowed URL schemes and hosts",
 		fileTypes: [".js", ".ts"],
+		safeContext: ["config.", "process.env", "new URL(", "constants.", "env."],
 	},
 	{
 		name: "Path traversal via file read",
@@ -40,6 +42,19 @@ export default definePatterns([
 		message: "File operation with potentially user-controlled path",
 		fix: "Validate path and use path.resolve() to prevent directory traversal",
 		fileTypes: [".js", ".ts"],
+		safeContext: [
+			"__dirname",
+			"__filename",
+			"path.join(",
+			"path.resolve(",
+			"path.normalize(",
+			"process.cwd()",
+			"import.meta.url",
+			"import.meta.dirname",
+			"configDir",
+			"appRoot",
+			"projectRoot",
+		],
 	},
 	{
 		name: "XXE via DOMParser",

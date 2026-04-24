@@ -47,6 +47,15 @@ function getSeverityIcon(severity: string): string {
 	return icons[severity] || "⚪";
 }
 
+function getConfidenceIcon(confidence: string | undefined): string {
+	const icons: Record<string, string> = {
+		high: "🎯",
+		medium: "❓",
+		low: "💭",
+	};
+	return icons[confidence ?? "high"] || "🎯";
+}
+
 function printResults(issues: Issue[]) {
 	if (issues.length === 0) {
 		console.log(ansi.green("\n✅ No security issues found\n"));
@@ -57,44 +66,28 @@ function printResults(issues: Issue[]) {
 	console.log(ansi.bold(`Found ${issues.length} issue(s):`));
 	console.log("─".repeat(50));
 
-	// Group by type
-	const byType: Record<string, Issue[]> = {};
 	for (const issue of issues) {
-		const key = issue.type;
-		if (!byType[key]) byType[key] = [];
-		byType[key].push(issue);
-	}
-
-	// Sort by severity
-	const severityOrder: Record<string, number> = {
-		critical: 0,
-		high: 1,
-		medium: 2,
-		low: 3,
-		info: 4,
-	};
-	const sortedTypes = Object.entries(byType).sort((a, b) => {
-		return (severityOrder[a[1][0].severity] ?? 5) - (severityOrder[b[1][0].severity] ?? 5);
-	});
-
-	for (const [type, findings] of sortedTypes) {
-		const sev = findings[0].severity;
+		const sev = issue.severity;
 		const icon = getSeverityIcon(sev);
+		const confIcon = getConfidenceIcon(issue.confidence);
+		const locs = issue.locations || [{ file: issue.file, line: issue.line }];
 
-		console.log(`\n${icon} ${ansi.bold(type)} (${findings.length})`);
-		console.log(ansi.dim(`   ${findings[0].message}`));
-		if (findings[0].fix) {
-			console.log(ansi.cyan(`   Fix: ${findings[0].fix.split("\n")[0]}`));
+		console.log(
+			`\n${icon} ${ansi.bold(issue.type)}${locs.length > 1 ? ` (${locs.length} files)` : ""} ${confIcon} ${issue.confidence ?? "high"}`
+		);
+		console.log(ansi.dim(`   ${issue.message}`));
+		if (issue.fix) {
+			console.log(ansi.cyan(`   Fix: ${issue.fix.split("\n")[0]}`));
 		}
 		console.log("   Files:");
 
 		const maxFiles = 5;
-		findings.slice(0, maxFiles).forEach((f) => {
-			const loc = f.line ? `${f.file}:${f.line}` : f.file;
-			console.log(ansi.dim(`   - ${loc}`));
+		locs.slice(0, maxFiles).forEach((loc) => {
+			const locStr = loc.line ? `${loc.file}:${loc.line}` : loc.file;
+			console.log(ansi.dim(`   - ${locStr}`));
 		});
-		if (findings.length > maxFiles) {
-			console.log(ansi.dim(`   ... and ${findings.length - maxFiles} more`));
+		if (locs.length > maxFiles) {
+			console.log(ansi.dim(`   ... and ${locs.length - maxFiles} more`));
 		}
 	}
 
@@ -114,6 +107,28 @@ function printResults(issues: Issue[]) {
 }
 
 function toSarif(issues: Issue[], _repoPath: string) {
+	// Expand deduplicated issues back into individual results per location
+	const results: any[] = [];
+	for (const issue of issues) {
+		const locs = issue.locations || [{ file: issue.file, line: issue.line }];
+		for (const loc of locs) {
+			results.push({
+				ruleId: issue.type,
+				level:
+					issue.severity === "critical" ? "error" : issue.severity === "high" ? "error" : "warning",
+				message: { text: issue.message },
+				locations: [
+					{
+						physicalLocation: {
+							artifactLocation: { uri: loc.file },
+							region: { startLine: loc.line || 1 },
+						},
+					},
+				],
+			});
+		}
+	}
+
 	return {
 		$schema:
 			"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
@@ -127,24 +142,7 @@ function toSarif(issues: Issue[], _repoPath: string) {
 						informationUri: "https://github.com/redwood-labs/scanner",
 					},
 				},
-				results: issues.map((issue) => ({
-					ruleId: issue.type,
-					level:
-						issue.severity === "critical"
-							? "error"
-							: issue.severity === "high"
-								? "error"
-								: "warning",
-					message: { text: issue.message },
-					locations: [
-						{
-							physicalLocation: {
-								artifactLocation: { uri: issue.file },
-								region: { startLine: issue.line || 1 },
-							},
-						},
-					],
-				})),
+				results,
 			},
 		],
 	};
@@ -168,6 +166,9 @@ ${ansi.bold("Options:")}
   --verbose          Show detailed output
   --bypass-ignore    Critical mode: include bypassed findings as issues
   --severity <level> Minimum severity to fail on (critical|high|medium|low)
+  --diff <base>      Only scan files changed vs git ref (e.g., main, origin/main)
+  --new-only         Only flag findings on changed lines (requires --diff)
+  --confidence <lvl> Minimum confidence to show (high|medium|low)
   --no-prompt        Suppress LLM fix prompt (for CI/scripted use)
   --help             Show this help message
 `);
@@ -240,6 +241,28 @@ async function runScan(
 
 		const bypassIgnore = options["bypass-ignore"] === true;
 
+		// Diff mode options
+		const diffBase = typeof options.diff === "string" ? options.diff : undefined;
+		const newOnly = options["new-only"] === true;
+		if (newOnly && !diffBase) {
+			console.error(ansi.red("Error: --new-only requires --diff <base>"));
+			process.exit(1);
+		}
+
+		// Confidence filter
+		const CONFIDENCE_LEVELS = new Set(["high", "medium", "low"]);
+		const confidenceVal = options.confidence;
+		if (typeof confidenceVal === "string" && !CONFIDENCE_LEVELS.has(confidenceVal)) {
+			console.error(
+				ansi.red(
+					`Error: Invalid confidence level '${confidenceVal}'. Must be one of: high, medium, low`
+				)
+			);
+			process.exit(1);
+		}
+		const minConfidence =
+			typeof confidenceVal === "string" ? (confidenceVal as "high" | "medium" | "low") : undefined;
+
 		// Determine output format early (needed for quiet mode)
 		const useJson = jsonVal === true || config.output?.json;
 		const useSarif = sarifVal === true || config.output?.sarif;
@@ -254,6 +277,9 @@ async function runScan(
 					: config.severity) as "critical" | "high" | "medium" | "low" | undefined,
 			bypassIgnore,
 			config,
+			diffBase,
+			newOnly,
+			minConfidence,
 		});
 		const effectiveSeverity =
 			typeof severityVal === "string" ? severityVal : config.severity || "critical";
@@ -372,6 +398,9 @@ async function main() {
 							verbose: { type: "boolean" },
 							"bypass-ignore": { type: "boolean" },
 							severity: { type: "string" },
+							diff: { type: "string" },
+							"new-only": { type: "boolean" },
+							confidence: { type: "string" },
 							"no-prompt": { type: "boolean" },
 							help: { type: "boolean" },
 						},

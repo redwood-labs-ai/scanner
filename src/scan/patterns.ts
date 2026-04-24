@@ -13,7 +13,7 @@
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { extname, join, relative } from "node:path";
+import { basename, extname, join, relative } from "node:path";
 import type { Issue } from "./engine.js";
 import { DEFAULT_IGNORE_DIRS, isIgnored, loadRedwoodIgnore, shouldSkipDir } from "./ignore.js";
 import { DANGEROUS_PATTERNS, patternStats } from "./patterns/index.js";
@@ -74,7 +74,8 @@ interface BypassInfo {
 
 export async function scanPatterns(
 	repoPath: string,
-	bypassIgnore: boolean = false
+	bypassIgnore: boolean = false,
+	changedFiles?: Set<string>
 ): Promise<Issue[]> {
 	const issues: Issue[] = [];
 	const bypasses: BypassInfo[] = [];
@@ -85,9 +86,15 @@ export async function scanPatterns(
 
 	const files = getFiles(repoPath, repoPath, ignorePatterns);
 
-	for (const file of files) {
+	// Filter to only changed files if diff mode
+	const filesToScan = changedFiles
+		? files.filter((f) => changedFiles.has(relative(repoPath, f)))
+		: files;
+
+	for (const file of filesToScan) {
 		const relPath = relative(repoPath, file);
 		const ext = extname(file);
+		const name = basename(file).toLowerCase();
 
 		try {
 			const content = readFileSync(file, "utf-8");
@@ -103,8 +110,10 @@ export async function scanPatterns(
 			const ignoredLines = extractInlineIgnores(content);
 
 			for (const pattern of DANGEROUS_PATTERNS) {
-				// Skip if pattern is for specific file types and this isn't one
-				if (pattern.fileTypes && !pattern.fileTypes.includes(ext)) {
+				// Skip if pattern is for specific file types and this isn't one.
+				// Match on extension (e.g., ".js") OR full basename for dotfile configs
+				// like ".env"/".env.local" where Node's extname() returns "" or ".local".
+				if (pattern.fileTypes && !pattern.fileTypes.some((ft) => ft === ext || ft === name)) {
 					continue;
 				}
 
@@ -142,6 +151,17 @@ export async function scanPatterns(
 						}
 						// Skip this finding in normal mode
 						continue;
+					}
+
+					// Taint-lite: skip if the matched line contains safe context identifiers
+					// (e.g., __dirname, path.join — the input isn't user-controlled)
+					if (pattern.safeContext) {
+						const lineStart = content.lastIndexOf("\n", match.index) + 1;
+						const lineEnd = content.indexOf("\n", match.index);
+						const line = content.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
+						if (pattern.safeContext.some((ctx) => line.includes(ctx))) {
+							continue;
+						}
 					}
 
 					issues.push({
@@ -233,7 +253,7 @@ function getFiles(dir: string, repoPath: string, ignorePatterns: string[]): stri
 				) {
 					files.push(fullPath);
 				}
-				// Scan config files and templates
+				// Scan config files, templates, and shell scripts
 				else if (
 					[
 						".yml",
@@ -247,11 +267,15 @@ function getFiles(dir: string, repoPath: string, ignorePatterns: string[]): stri
 						".ejs",
 						".twig",
 						".blade.php",
+						".sh",
+						".bash",
+						".zsh",
+						".conf",
 					].includes(ext)
 				) {
 					files.push(fullPath);
 				}
-				// Scan specific config files without extensions
+				// Scan specific config files matched by full name (dotfiles, well-known filenames)
 				else if (
 					[
 						"dockerfile",
@@ -260,6 +284,8 @@ function getFiles(dir: string, repoPath: string, ignorePatterns: string[]): stri
 						".env",
 						".env.local",
 						".env.example",
+						".env.production",
+						".env.development",
 					].includes(name)
 				) {
 					files.push(fullPath);

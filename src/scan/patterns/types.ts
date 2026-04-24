@@ -22,6 +22,17 @@ export interface Pattern {
 
 	/** File extensions this pattern applies to (e.g., ['.rs', '.go']) */
 	fileTypes?: string[];
+
+	/**
+	 * Safe context identifiers — if any of these strings appear in the
+	 * matched code, the finding is suppressed (the input is likely not
+	 * user-controlled). Used for taint-lite filtering of SSRF/path
+	 * traversal patterns that can't distinguish safe constants from
+	 * user input via regex alone.
+	 *
+	 * Examples: '__dirname', 'path.join', 'process.cwd()'
+	 */
+	safeContext?: string[];
 }
 
 /**

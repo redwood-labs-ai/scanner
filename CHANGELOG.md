@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-04-23
+
+### Added
+
+- **New scan modes** (RED-166/167)
+  - `--diff <base>` — only scan files changed vs a git ref (e.g., `main`, `origin/main`)
+  - `--new-only` — only flag findings on changed lines (requires `--diff`)
+  - `--confidence <high|medium|low>` — minimum confidence threshold; findings now carry a confidence score
+- **C/C++ support** — 9 new patterns for memory safety (buffer overflow, use-after-free, format string) and command injection via `system()`/`popen()`
+- **Shell script scanning** — `.sh` files are now scanned
+- **Taint-lite analysis** — safe-context filtering for path traversal and SSRF patterns to reduce false positives
+- **New patterns**
+  - PHP command injection (`exec`/`system`/`passthru`/`shell_exec`/backticks)
+  - PHP `preg_replace()` `/e` modifier RCE (RED-172)
+  - PHP `unserialize()`/`extract()` RCE, CRLF header injection, SQL concatenation (RED-161/173/171)
+  - Rust command injection via `std::process::Command` / `Command::new("sh").arg("-c")` (RED-175)
+  - Cloud metadata SSRF for GCP, Azure, DigitalOcean
+  - JWT token in URL query parameter (RED-177)
+  - 8 `.env` file secret detectors (RED-162)
+- **FP tolerance baseline tests** to guard against regressions in false-positive rate
+
+### Fixed
+
+- Three non-functional regex patterns (double-escape bugs) now match correctly
+- SQL template literal injection false positive (word boundaries on keywords)
+- Secrets scanner now skips common dev/test placeholder values
+- MCP dangerous-tool-name matching tightened to reduce false positives
+- Findings are now deduplicated by issue type
+
+### Stats
+
+- **123 patterns** across JS, TS, Python, Go, Ruby, PHP, Rust, C/C++ (up from 91 in 0.4.2)
+- Plus 12 secret detectors and 8 `.env`-specific secret patterns
+
 ## [0.4.2] - 2026-04-09
 
 ### Added
